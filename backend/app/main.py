@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.mcp_routes import router as mcp_router
 from app.api.routes import router as api_router
 from app.api.ws import router as ws_router
 from app.logging_conf import configure_logging
@@ -15,4 +16,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
+app.include_router(mcp_router)
 app.include_router(ws_router)

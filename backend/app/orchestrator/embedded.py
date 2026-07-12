@@ -7,9 +7,9 @@ available for containerized deploys and heavyweight engines.
 import asyncio
 import json
 import logging
+import os
 import re
 import shutil
-import zipfile
 from pathlib import Path
 
 from app.events.bus import bus
@@ -162,26 +162,50 @@ async def test_stage(run_id: str, project_dir: Path) -> dict:
     return {"passed": 0, "failed": 0}
 
 
+async def _deploy_docker(run_id: str, project_dir: Path) -> dict | None:
+    if not shutil.which("docker"):
+        return None
+    code, _ = await _run_cmd(["docker", "info"], project_dir, timeout=15)
+    if code != 0:
+        return None
+    tag = f"devfoundry-app:{run_id[:8]}"
+    code, out = await _run_cmd(["docker", "build", "-t", tag, str(project_dir)], project_dir, timeout=600)
+    if code != 0:
+        await _emit(run_id, Stage.DEPLOY, "Container build failed — falling back", kind="log")
+        return None
+    return {"provider": "docker", "image": tag, "logs": out[-2000:]}
+
+
 async def deploy_stage(run_id: str, project_dir: Path, workspace: Path) -> dict:
-    await _emit(run_id, Stage.DEPLOY, "Packaging application...")
-    if shutil.which("docker"):
-        code, _ = await _run_cmd(["docker", "info"], project_dir, timeout=15)
-        if code == 0:
-            tag = f"devfoundry-app:{run_id[:8]}"
-            code, out = await _run_cmd(["docker", "build", "-t", tag, str(project_dir)], project_dir, timeout=600)
-            if code == 0:
-                await _emit(run_id, Stage.DEPLOY, f"Built container image {tag}", kind="artifact",
-                            artifact="deployment", image=tag, logs=out[-2000:])
-                return {"image": tag}
-            await _emit(run_id, Stage.DEPLOY, "Container build failed — falling back to archive", kind="log")
-    archive = workspace / "app-bundle.zip"
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-        for p in project_dir.rglob("*"):
-            if p.is_file() and "node_modules" not in p.parts:
-                zf.write(p, p.relative_to(project_dir))
-    await _emit(run_id, Stage.DEPLOY, f"Packaged app bundle: {archive}", kind="artifact",
-                artifact="deployment", bundle=str(archive))
-    return {"bundle": str(archive)}
+    from app.orchestrator.deploy_providers import (
+        DeployError, deploy_hf_space, deploy_netlify, write_zip)
+
+    target = (os.environ.get("DEPLOY_TARGET") or "auto").strip().lower()
+    await _emit(run_id, Stage.DEPLOY, f"Deploying (target: {target})...")
+    try:
+        result: dict | None = None
+        if target == "netlify":
+            result = await deploy_netlify(project_dir)
+        elif target in ("hf-spaces", "hf", "huggingface"):
+            result = await deploy_hf_space(project_dir, run_id)
+        elif target == "docker":
+            result = await _deploy_docker(run_id, project_dir)
+            if result is None:
+                raise DeployError("Docker deploy requested but Docker is not available")
+        elif target == "zip":
+            result = write_zip(project_dir, workspace)
+        else:  # auto
+            result = await _deploy_docker(run_id, project_dir) or write_zip(project_dir, workspace)
+        await _emit(run_id, Stage.DEPLOY,
+                    f"Deployed via {result.get('provider')}: {result.get('url') or result.get('image') or result.get('bundle')}",
+                    kind="artifact", artifact="deployment", **result)
+        return result
+    except DeployError as exc:
+        await _emit(run_id, Stage.DEPLOY, f"{exc} — packaging zip bundle instead", kind="log")
+        result = write_zip(project_dir, workspace)
+        await _emit(run_id, Stage.DEPLOY, f"Packaged app bundle: {result['bundle']}",
+                    kind="artifact", artifact="deployment", **result)
+        return result
 
 
 # ---------------------------------------------------------------- pipeline

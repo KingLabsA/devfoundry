@@ -121,6 +121,33 @@ export function SettingsPage() {
       </section>
 
       <section className="settings-group">
+        <h3>Deployment</h3>
+        <p className="hint">Free targets: Netlify (static hosting) and Hugging Face Spaces (CPU). Local: Docker image or zip bundle.</p>
+        <label className="field">
+          <span>Deploy target</span>
+          <select className="btn" style={{ alignSelf: "flex-start" }}
+            value={values.DEPLOY_TARGET ?? "auto"}
+            onChange={(e) => set("DEPLOY_TARGET", e.target.value)}>
+            <option value="auto">auto (Docker → zip)</option>
+            <option value="zip">zip bundle (local)</option>
+            <option value="docker">Docker image (local)</option>
+            <option value="netlify">Netlify (free)</option>
+            <option value="hf-spaces">Hugging Face Spaces (free)</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Netlify auth token (free account — app.netlify.com/user/applications)</span>
+          <input type="password" value={values.NETLIFY_AUTH_TOKEN ?? ""} placeholder="nfp_…"
+            onChange={(e) => set("NETLIFY_AUTH_TOKEN", e.target.value)} spellCheck={false} autoComplete="off" />
+        </label>
+        <label className="field">
+          <span>Hugging Face token (free account — hf.co/settings/tokens, write scope)</span>
+          <input type="password" value={values.HF_TOKEN ?? ""} placeholder="hf_…"
+            onChange={(e) => set("HF_TOKEN", e.target.value)} spellCheck={false} autoComplete="off" />
+        </label>
+      </section>
+
+      <section className="settings-group">
         <h3>Pipeline</h3>
         <label className="field">
           <span>Workspace directory</span>
