@@ -52,6 +52,15 @@ class Orchestrator:
                 state.error = str(exc)
                 await self._set_stage(state, Stage.FAILED, f"Demo pipeline error: {exc}")
             return
+        if settings.devfoundry_embedded:
+            from app.orchestrator.embedded import run_embedded_pipeline
+            try:
+                await run_embedded_pipeline(state, self._set_stage, workspace)
+            except Exception as exc:  # noqa: BLE001
+                state.error = str(exc)
+                log.exception("Embedded run %s failed", run_id)
+                await self._set_stage(state, Stage.FAILED, f"Pipeline failed: {exc}")
+            return
         try:
             # 1. MetaGPT — PRD, architecture, API specs
             await self._set_stage(state, Stage.SPEC, "Generating specifications with MetaGPT")

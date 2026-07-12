@@ -31,8 +31,16 @@ async def get_run(run_id: str) -> RunState:
 
 @router.get("/health")
 async def health() -> dict:
+    from app.config import get_settings
+
+    settings = get_settings()
+    if settings.devfoundry_mock or settings.devfoundry_embedded:
+        mode = "mock" if settings.devfoundry_mock else "embedded"
+        return {"backend": "ok", "mode": mode, "metagpt": True, "boltdiy": True,
+                "opencode": True, "orc": True, "superpowers": True}
     return {
         "backend": "ok",
+        "mode": "isolated",
         "metagpt": await orchestrator.metagpt.health(),
         "boltdiy": await orchestrator.boltdiy.health(),
         "opencode": await orchestrator.opencode.health(),

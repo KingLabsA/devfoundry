@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     devfoundry_workspace: Path = Path("./workspace")
     devfoundry_log_level: str = "INFO"
     devfoundry_mock: bool = False
+    devfoundry_embedded: bool = True  # run all stages in-process (no Docker sidecars)
     service_timeout_seconds: int = 600
 
     class Config:

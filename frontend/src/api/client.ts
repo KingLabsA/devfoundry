@@ -11,6 +11,7 @@ export interface PipelineEvent {
 
 export interface HealthReport {
   backend: string;
+  mode?: "embedded" | "isolated" | "mock";
   metagpt: boolean;
   boltdiy: boolean;
   opencode: boolean;

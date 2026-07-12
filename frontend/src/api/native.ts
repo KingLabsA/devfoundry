@@ -16,10 +16,47 @@ export const dockerAvailable = () => invoke<boolean>("docker_available");
 export const dockerRunning = () => invoke<boolean>("docker_running");
 export const startDockerDesktop = () => invoke<void>("start_docker_desktop");
 
+export const startBackend = () => invoke<string>("start_backend", { dir: getProjectDir() });
+export const stopBackend = () => invoke<void>("stop_backend");
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+async function backendHealthy(): Promise<boolean> {
+  try {
+    const resp = await fetch("http://localhost:9100/api/health", { signal: AbortSignal.timeout(3000) });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Full startup flow: ensure the Docker daemon is up (launching Docker Desktop
+ * Default startup: the embedded orchestrator runs everything in-process —
+ * no Docker required. Spawns it via the native command and waits for health.
+ */
+export async function ensureEmbeddedUp(onProgress: (msg: string) => void): Promise<void> {
+  if (await backendHealthy()) {
+    onProgress("Services already running.");
+    return;
+  }
+  onProgress("Starting embedded orchestrator…");
+  await startBackend();
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    await sleep(1500);
+    if (await backendHealthy()) {
+      onProgress("Services running (embedded mode).");
+      return;
+    }
+  }
+  throw new Error(
+    "Embedded orchestrator did not come up. Check that Python 3.11+ is installed " +
+    "(or backend/.venv exists), or switch to Docker isolated mode from the Services page.",
+  );
+}
+
+/**
+ * Isolated mode: ensure the Docker daemon is up (launching Docker Desktop
  * if needed), then bring the compose stack up. Reports progress via callback.
  */
 export async function ensureStackUp(onProgress: (msg: string) => void): Promise<void> {

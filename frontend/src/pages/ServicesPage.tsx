@@ -77,10 +77,18 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
     return <div className="page"><div className="empty-state">Service management is available in the desktop app.</div></div>;
   }
 
+  const embedded = health?.mode === "embedded" || health?.mode === "mock";
+
   return (
     <div className="page">
+      {embedded && (
+        <div className="notice">
+          <strong>Embedded mode</strong> — all pipeline stages run inside the app; nothing external is required.
+          The Docker controls below are optional (“isolated mode”) for containerized engines and deploys.
+        </div>
+      )}
       <div className="page-head">
-        <h2>Services</h2>
+        <h2>{embedded ? "Isolated mode (optional)" : "Services"}</h2>
         <div className="page-actions">
           <button className="btn primary" disabled={busy !== null || docker === false}
             onClick={() => run("Starting stack", () => ensureStackUp(setMessage))}>

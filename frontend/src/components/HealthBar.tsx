@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HealthReport } from "../api/client";
-import { IS_TAURI, ensureStackUp } from "../api/native";
+import { IS_TAURI, ensureEmbeddedUp } from "../api/native";
 
 const SERVICES: { key: keyof HealthReport; label: string }[] = [
   { key: "metagpt", label: "MetaGPT" },
@@ -23,7 +23,7 @@ export function HealthBar({ health, checked, onOpenServices }: {
     setStarting(true);
     setFailed(false);
     try {
-      await ensureStackUp(setProgress);
+      await ensureEmbeddedUp(setProgress);
     } catch (err) {
       setProgress(String(err));
       setFailed(true);
