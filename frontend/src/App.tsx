@@ -4,6 +4,10 @@ import { PipelineTimeline } from "./components/PipelineTimeline";
 import { LogViewer } from "./components/LogViewer";
 import { ArtifactPanel } from "./components/ArtifactPanel";
 import { HealthBar } from "./components/HealthBar";
+import { Sidebar, Page } from "./components/Sidebar";
+import { ServicesPage } from "./pages/ServicesPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { RunsPage } from "./pages/RunsPage";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -25,44 +29,54 @@ export default function App() {
   const { events, stage, running, error, start } = usePipelineStream();
   const { health, checked } = useHealth();
   const [tab, setTab] = useState<Tab>("logs");
+  const [page, setPage] = useState<Page>("forge");
 
   const artifacts = useMemo(() => events.filter((e) => e.kind === "artifact"), [events]);
 
   return (
-    <div className="app">
-      <header className="titlebar">
-        <div className="brand">
-          <span className="brand-mark">⬢</span>
-          <div>
-            <h1>DevFoundry</h1>
-            <span className="subtitle">Autonomous Software Development Factory</span>
+    <div className="shell">
+      <Sidebar page={page} onNavigate={setPage} servicesUp={health?.backend === "ok"} />
+
+      <div className="app">
+        <header className="titlebar">
+          <div className="brand">
+            <span className="brand-mark">⬢</span>
+            <div>
+              <h1>DevFoundry</h1>
+              <span className="subtitle">Autonomous Software Development Factory</span>
+            </div>
           </div>
-        </div>
-        <HealthBar health={health} checked={checked} />
-      </header>
+          <HealthBar health={health} checked={checked} onOpenServices={() => setPage("services")} />
+        </header>
 
-      <IdeaInput disabled={running} onSubmit={start} />
-      {error && <div className="error">⚠ {error}</div>}
+        {page === "forge" && (
+          <>
+            <IdeaInput disabled={running} onSubmit={start} />
+            {error && <div className="error">⚠ {error}</div>}
+            <PipelineTimeline currentStage={stage} events={events} />
+            <div className="panel">
+              <div className="panel-tabs">
+                <button className={tab === "logs" ? "tab active" : "tab"} onClick={() => setTab("logs")}>
+                  Live Log <span className="count">{events.length}</span>
+                </button>
+                <button className={tab === "artifacts" ? "tab active" : "tab"} onClick={() => setTab("artifacts")}>
+                  Artifacts <span className="count">{artifacts.length}</span>
+                </button>
+              </div>
+              {tab === "logs" ? <LogViewer events={events} /> : <ArtifactPanel artifacts={artifacts} />}
+            </div>
+          </>
+        )}
+        {page === "runs" && <RunsPage />}
+        {page === "services" && <ServicesPage health={health} />}
+        {page === "settings" && <SettingsPage />}
 
-      <PipelineTimeline currentStage={stage} events={events} />
-
-      <div className="panel">
-        <div className="panel-tabs">
-          <button className={tab === "logs" ? "tab active" : "tab"} onClick={() => setTab("logs")}>
-            Live Log <span className="count">{events.length}</span>
-          </button>
-          <button className={tab === "artifacts" ? "tab active" : "tab"} onClick={() => setTab("artifacts")}>
-            Artifacts <span className="count">{artifacts.length}</span>
-          </button>
-        </div>
-        {tab === "logs" ? <LogViewer events={events} /> : <ArtifactPanel artifacts={artifacts} />}
+        <footer className="statusbar">
+          <span className={`status-pill ${stage}`}>{STAGE_LABELS[stage] ?? stage}</span>
+          {running && <span className="spinner" aria-label="working" />}
+          <span className="statusbar-right">DevFoundry v0.1.0</span>
+        </footer>
       </div>
-
-      <footer className="statusbar">
-        <span className={`status-pill ${stage}`}>{STAGE_LABELS[stage] ?? stage}</span>
-        {running && <span className="spinner" aria-label="working" />}
-        <span className="statusbar-right">DevFoundry v0.1.0</span>
-      </footer>
     </div>
   );
 }

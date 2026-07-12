@@ -16,6 +16,11 @@ async def create_run(req: RunRequest) -> RunCreated:
     return RunCreated(run_id=state.run_id)
 
 
+@router.get("/runs", response_model=list[RunState])
+async def list_runs() -> list[RunState]:
+    return list(orchestrator.runs.values())
+
+
 @router.get("/runs/{run_id}", response_model=RunState)
 async def get_run(run_id: str) -> RunState:
     state = orchestrator.runs.get(run_id)

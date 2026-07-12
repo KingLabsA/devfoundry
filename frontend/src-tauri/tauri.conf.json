@@ -16,7 +16,14 @@
   },
   "app": {
     "windows": [
-      { "title": "DevFoundry — Autonomous Software Factory", "width": 1280, "height": 840 }
+      {
+        "title": "DevFoundry — Autonomous Software Factory",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "maximized": true
+      }
     ],
     "security": { "csp": "default-src 'self'; connect-src 'self' http://localhost:9100 ws://localhost:9100; style-src 'self' 'unsafe-inline'" }
   }
