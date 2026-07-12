@@ -11,6 +11,11 @@ services:
     volumes: ["./workspace:/workspace"]
     environment:
       DEVFOUNDRY_WORKSPACE: /workspace
+      METAGPT_URL: http://metagpt:9101
+      BOLTDIY_URL: http://boltdiy:9102
+      OPENCODE_URL: http://opencode:9103
+      ORC_URL: http://orc:9104
+      SUPERPOWERS_URL: http://superpowers:9105
     depends_on: [metagpt, boltdiy, opencode, orc, superpowers]
 
   metagpt:
@@ -27,6 +32,7 @@ services:
     <<: *common
     build: ./services/opencode
     ports: ["9103:9103"]
+    volumes: ["./workspace:/workspace"]
 
   orc:
     <<: *common
@@ -37,6 +43,9 @@ services:
     <<: *common
     build: ./services/superpowers
     ports: ["9105:9105"]
+    volumes:
+      - ./workspace:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   devfoundry: {}

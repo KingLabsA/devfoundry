@@ -1,8 +1,6 @@
-FROM node:20-slim
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+FROM python:3.11-slim
+RUN pip install --no-cache-dir fastapi uvicorn httpx pydantic
 WORKDIR /srv
-RUN git clone --depth 1 https://github.com/stackblitz-labs/bolt.diy . && npm ci && npm install express
-COPY adapter.mjs /srv/adapter.mjs
-ENV OPENAI_API_KEY="" ANTHROPIC_API_KEY=""
+COPY llm.py server.py /srv/
 EXPOSE 9102
-CMD ["node", "adapter.mjs"]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "9102"]
