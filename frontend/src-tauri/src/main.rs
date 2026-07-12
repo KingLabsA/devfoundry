@@ -47,6 +47,13 @@ fn find_uvicorn(backend_dir: &Path) -> Option<(PathBuf, Vec<String>)> {
     None
 }
 
+fn autostart_log(msg: &str) {
+    use std::io::Write;
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open("/tmp/devfoundry-autostart.log") {
+        let _ = writeln!(f, "{msg}");
+    }
+}
+
 fn spawn_backend(dir: &str) -> Result<Child, String> {
     let backend_dir = Path::new(dir).join("backend");
     if !backend_dir.join("app/main.py").exists() {
@@ -63,14 +70,22 @@ fn spawn_backend(dir: &str) -> Result<Child, String> {
         Path::new(dir).join("workspace").to_string_lossy().into_owned(),
     );
 
-    Command::new(program)
+    let log_path = Path::new(dir).join("orchestrator.log");
+    let log_file = fs::File::create(&log_path).map_err(|e| format!("cannot create {log_path:?}: {e}"))?;
+    let log_err = log_file.try_clone().map_err(|e| e.to_string())?;
+
+    autostart_log(&format!("spawning: {program:?} {args:?} (cwd {backend_dir:?})"));
+    Command::new(&program)
         .args(&args)
         .current_dir(&backend_dir)
         .envs(&env_vars)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::from(log_file))
+        .stderr(Stdio::from(log_err))
         .spawn()
-        .map_err(|e| format!("failed to start orchestrator: {e}"))
+        .map_err(|e| {
+            autostart_log(&format!("spawn failed: {e}"));
+            format!("failed to start orchestrator: {e}")
+        })
 }
 
 #[tauri::command]
@@ -180,10 +195,15 @@ fn main() {
         .setup(|app| {
             // Auto-start the embedded orchestrator so the app is self-contained.
             let state = app.state::<BackendProc>();
-            if !backend_port_open() {
+            if backend_port_open() {
+                autostart_log("autostart: port 9100 already in use — skipping spawn");
+            } else {
                 match spawn_backend(DEFAULT_PROJECT_DIR) {
-                    Ok(child) => *state.0.lock().unwrap() = Some(child),
-                    Err(e) => eprintln!("embedded orchestrator autostart failed: {e}"),
+                    Ok(child) => {
+                        autostart_log(&format!("autostart: orchestrator pid {}", child.id()));
+                        *state.0.lock().unwrap() = Some(child);
+                    }
+                    Err(e) => autostart_log(&format!("autostart failed: {e}")),
                 }
             }
             Ok(())
@@ -191,7 +211,8 @@ fn main() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
                 let state = window.state::<BackendProc>();
-                if let Some(mut child) = state.0.lock().unwrap().take() {
+                let taken = state.0.lock().unwrap().take();
+                if let Some(mut child) = taken {
                     let _ = child.kill();
                 }
             }
