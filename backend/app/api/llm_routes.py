@@ -2,16 +2,39 @@ import logging
 
 import httpx
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app import llm_providers
+from app.llm import LLMNotConfigured, complete, routing_info
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/llm")
 
 
+class TestReq(BaseModel):
+    prompt: str = "Reply with exactly: DevFoundry online"
+    role: str = ""
+
+
 @router.get("/providers")
 async def providers() -> list[dict]:
     return llm_providers.catalog()
+
+
+@router.get("/routing")
+async def routing() -> dict:
+    return await routing_info()
+
+
+@router.post("/test")
+async def test_completion(req: TestReq) -> dict:
+    try:
+        text = await complete(req.prompt, max_tokens=60, role=req.role)
+        return {"ok": True, "response": text[:500]}
+    except LLMNotConfigured as exc:
+        raise HTTPException(422, str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"LLM call failed: {exc}")
 
 
 @router.get("/providers/{provider_id}/models")

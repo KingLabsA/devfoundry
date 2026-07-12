@@ -87,11 +87,11 @@ async def spec_stage(run_id: str, idea: str) -> dict:
     await _emit(run_id, Stage.SPEC, "Assembling virtual team (PM, Architect, API designer)...")
     prd, arch, api = await asyncio.gather(
         complete(f"Write a concise PRD (goals, users, core features, success metrics) for: {idea}",
-                 "You are a senior Product Manager."),
+                 "You are a senior Product Manager.", role="spec"),
         complete(f"Design the system architecture (components, data flow, stack, ASCII diagram) for: {idea}",
-                 "You are a principal Software Architect."),
+                 "You are a principal Software Architect.", role="spec"),
         complete(f"Define the REST API (resources, endpoints, schemas) in markdown for: {idea}",
-                 "You are an API designer."),
+                 "You are an API designer.", role="spec"),
     )
     specs = {"prd": prd, "architecture": arch, "api_spec": api}
     for name, doc in specs.items():
@@ -104,7 +104,7 @@ async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path) 
     text = await complete(
         f"Build this application: {idea}\n\n## PRD\n{specs['prd'][:6000]}\n\n"
         f"## Architecture\n{specs['architecture'][:4000]}\n\n## API Spec\n{specs['api_spec'][:4000]}",
-        CODEGEN_SYSTEM, max_tokens=16000)
+        CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
     data = _extract_json(text)
     files = data.get("files", data)
     if not isinstance(files, dict) or not files:
@@ -121,7 +121,7 @@ async def tasks_stage(run_id: str, specs: dict, files: list[str]) -> list[dict]:
         "Break this PRD into 3-8 concrete development tasks. "
         'Return ONLY a JSON array of {"title": ..., "description": ...}.\n\n'
         f"PRD:\n{specs['prd'][:8000]}\n\nExisting files:\n" + "\n".join(files[:100]),
-        "You are an engineering lead planning a sprint.")
+        "You are an engineering lead planning a sprint.", role="tasks")
     match = re.search(r"\[[\s\S]*\]", text)
     raw = json.loads(match.group(0)) if match else []
     devs = ["ai-dev-1", "ai-dev-2", "ai-dev-3"]
@@ -139,7 +139,7 @@ async def refine_task(run_id: str, project_dir: Path, title: str, instruction: s
         f"Project files:\n{json.dumps(_snapshot(project_dir))}\n\nTask: {instruction}\n\n"
         'Respond with ONLY JSON: {"files": {"path": "new full content"}, "summary": "..."} '
         "containing every file you modified or created.",
-        "You are an expert software engineer performing a focused code change.", max_tokens=12000)
+        "You are an expert software engineer performing a focused code change.", max_tokens=12000, role="refine")
     result = _extract_json(text)
     changed = _write_files(project_dir, result.get("files", {}))
     await _emit(run_id, Stage.REFINE, f"Changed {len(changed)} files for '{title}'", kind="artifact",
