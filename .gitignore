@@ -1,6 +1,7 @@
 .env
 workspace/
 __pycache__/
+.venv/
 *.pyc
 node_modules/
 dist/
