@@ -8,15 +8,32 @@ Local targets:
 - zip:        package the project as an archive (always works)
 DEPLOY_TARGET=auto tries docker, falls back to zip.
 """
+import asyncio
 import io
 import logging
-import os
 import zipfile
 from pathlib import Path
 
 import httpx
 
+from app.config import env_value
+
 log = logging.getLogger(__name__)
+
+
+async def _cli(args: list[str], cwd: Path, env: dict[str, str] | None = None, timeout: int = 600) -> tuple[int, str]:
+    import os as _os
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args, cwd=cwd, env={**_os.environ, **(env or {})},
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        return proc.returncode or 0, out.decode(errors="replace")
+    except FileNotFoundError:
+        return -1, f"{args[0]}: not installed"
+    except asyncio.TimeoutError:
+        proc.kill()
+        return -1, "timed out"
 
 
 class DeployError(RuntimeError):
@@ -40,7 +57,7 @@ def write_zip(project_dir: Path, workspace: Path) -> dict:
 
 async def deploy_netlify(project_dir: Path) -> dict:
     """Create a new Netlify site and deploy the project as a static zip. Free tier."""
-    token = os.environ.get("NETLIFY_AUTH_TOKEN", "")
+    token = env_value("NETLIFY_AUTH_TOKEN")
     if not token:
         raise DeployError("NETLIFY_AUTH_TOKEN not set — add it in Settings (free account at netlify.com)")
     headers = {"Authorization": f"Bearer {token}"}
@@ -62,7 +79,7 @@ async def deploy_netlify(project_dir: Path) -> dict:
 
 async def deploy_hf_space(project_dir: Path, run_id: str) -> dict:
     """Create (or reuse) a Hugging Face Space and upload the project. Free CPU tier."""
-    token = os.environ.get("HF_TOKEN", "")
+    token = env_value("HF_TOKEN")
     if not token:
         raise DeployError("HF_TOKEN not set — add it in Settings (free account at huggingface.co)")
     try:
@@ -83,6 +100,52 @@ async def deploy_hf_space(project_dir: Path, run_id: str) -> dict:
             "repo_id": repo_id, "sdk": sdk, "free_tier": True}
 
 
+async def deploy_vercel(project_dir: Path) -> dict:
+    """Deploy via the Vercel CLI (npx). Free hobby tier."""
+    token = env_value("VERCEL_TOKEN")
+    if not token:
+        raise DeployError("VERCEL_TOKEN not set — add it in Settings (free account at vercel.com/account/tokens)")
+    code, out = await _cli(["npx", "-y", "vercel", "deploy", "--prod", "--yes", "--token", token],
+                           project_dir)
+    if code != 0:
+        raise DeployError(f"Vercel deploy failed: {out[-500:]}")
+    url = next((w for w in out.split() if w.startswith("https://") and ".vercel.app" in w), "")
+    return {"provider": "vercel", "url": url or out.strip().splitlines()[-1], "free_tier": True}
+
+
+async def deploy_cloudflare_pages(project_dir: Path, run_id: str) -> dict:
+    """Deploy static output to Cloudflare Pages via wrangler. Free tier."""
+    token = env_value("CLOUDFLARE_API_TOKEN")
+    account = env_value("CLOUDFLARE_ACCOUNT_ID")
+    if not token or not account:
+        raise DeployError("CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — add them in Settings (free at dash.cloudflare.com)")
+    project = f"devfoundry-{run_id[:8]}"
+    env = {"CLOUDFLARE_API_TOKEN": token, "CLOUDFLARE_ACCOUNT_ID": account}
+    await _cli(["npx", "-y", "wrangler", "pages", "project", "create", project,
+                "--production-branch", "main"], project_dir, env)
+    code, out = await _cli(["npx", "-y", "wrangler", "pages", "deploy", ".",
+                            "--project-name", project, "--commit-dirty=true"], project_dir, env)
+    if code != 0:
+        raise DeployError(f"Cloudflare Pages deploy failed: {out[-500:]}")
+    url = next((w for w in out.split() if w.startswith("https://") and ".pages.dev" in w),
+               f"https://{project}.pages.dev")
+    return {"provider": "cloudflare-pages", "url": url, "project": project, "free_tier": True}
+
+
+async def deploy_surge(project_dir: Path, run_id: str) -> dict:
+    """Deploy static files to surge.sh. Free."""
+    login = env_value("SURGE_LOGIN")
+    token = env_value("SURGE_TOKEN")
+    if not login or not token:
+        raise DeployError("SURGE_LOGIN / SURGE_TOKEN not set — add them in Settings (free: npx surge token)")
+    domain = f"devfoundry-{run_id[:8]}.surge.sh"
+    code, out = await _cli(["npx", "-y", "surge", ".", domain], project_dir,
+                           {"SURGE_LOGIN": login, "SURGE_TOKEN": token})
+    if code != 0:
+        raise DeployError(f"Surge deploy failed: {out[-500:]}")
+    return {"provider": "surge", "url": f"https://{domain}", "free_tier": True}
+
+
 def available_providers() -> list[dict]:
     return [
         {"id": "auto", "label": "Auto (Docker if available, else zip)", "free": True,
@@ -90,7 +153,13 @@ def available_providers() -> list[dict]:
         {"id": "zip", "label": "Zip bundle (local)", "free": True, "configured": True},
         {"id": "docker", "label": "Docker image (local)", "free": True, "configured": True},
         {"id": "netlify", "label": "Netlify (free static hosting)", "free": True,
-         "configured": bool(os.environ.get("NETLIFY_AUTH_TOKEN"))},
+         "configured": bool(env_value("NETLIFY_AUTH_TOKEN"))},
         {"id": "hf-spaces", "label": "Hugging Face Spaces (free CPU)", "free": True,
-         "configured": bool(os.environ.get("HF_TOKEN"))},
+         "configured": bool(env_value("HF_TOKEN"))},
+        {"id": "vercel", "label": "Vercel (free hobby tier)", "free": True,
+         "configured": bool(env_value("VERCEL_TOKEN"))},
+        {"id": "cloudflare-pages", "label": "Cloudflare Pages (free)", "free": True,
+         "configured": bool(env_value("CLOUDFLARE_API_TOKEN") and env_value("CLOUDFLARE_ACCOUNT_ID"))},
+        {"id": "surge", "label": "Surge.sh (free)", "free": True,
+         "configured": bool(env_value("SURGE_LOGIN") and env_value("SURGE_TOKEN"))},
     ]

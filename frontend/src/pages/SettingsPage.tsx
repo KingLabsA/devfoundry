@@ -133,8 +133,40 @@ export function SettingsPage() {
             <option value="docker">Docker image (local)</option>
             <option value="netlify">Netlify (free)</option>
             <option value="hf-spaces">Hugging Face Spaces (free)</option>
+            <option value="vercel">Vercel (free hobby)</option>
+            <option value="cloudflare-pages">Cloudflare Pages (free)</option>
+            <option value="surge">Surge.sh (free)</option>
           </select>
         </label>
+        <label className="field">
+          <span>Vercel token (vercel.com/account/tokens)</span>
+          <input type="password" value={values.VERCEL_TOKEN ?? ""} placeholder="…"
+            onChange={(e) => set("VERCEL_TOKEN", e.target.value)} spellCheck={false} autoComplete="off" />
+        </label>
+        <div className="field-row">
+          <label className="field" style={{ flex: 1 }}>
+            <span>Cloudflare API token</span>
+            <input type="password" value={values.CLOUDFLARE_API_TOKEN ?? ""} placeholder="…"
+              onChange={(e) => set("CLOUDFLARE_API_TOKEN", e.target.value)} spellCheck={false} autoComplete="off" />
+          </label>
+          <label className="field" style={{ flex: 1 }}>
+            <span>Cloudflare account ID</span>
+            <input value={values.CLOUDFLARE_ACCOUNT_ID ?? ""} placeholder="…"
+              onChange={(e) => set("CLOUDFLARE_ACCOUNT_ID", e.target.value)} spellCheck={false} />
+          </label>
+        </div>
+        <div className="field-row">
+          <label className="field" style={{ flex: 1 }}>
+            <span>Surge login (email)</span>
+            <input value={values.SURGE_LOGIN ?? ""} placeholder="you@example.com"
+              onChange={(e) => set("SURGE_LOGIN", e.target.value)} spellCheck={false} />
+          </label>
+          <label className="field" style={{ flex: 1 }}>
+            <span>Surge token (npx surge token)</span>
+            <input type="password" value={values.SURGE_TOKEN ?? ""} placeholder="…"
+              onChange={(e) => set("SURGE_TOKEN", e.target.value)} spellCheck={false} autoComplete="off" />
+          </label>
+        </div>
         <label className="field">
           <span>Netlify auth token (free account — app.netlify.com/user/applications)</span>
           <input type="password" value={values.NETLIFY_AUTH_TOKEN ?? ""} placeholder="nfp_…"

@@ -32,3 +32,29 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.devfoundry_workspace.mkdir(parents=True, exist_ok=True)
     return settings
+
+
+_env_file_cache: dict = {"mtime": 0.0, "vars": {}}
+
+
+def env_value(key: str, default: str = "") -> str:
+    """Read a config value, preferring the project .env file (re-read on change)
+    over process env. This lets keys saved in Settings take effect immediately,
+    without restarting the orchestrator."""
+    env_path = get_settings().devfoundry_workspace.resolve().parent / ".env"
+    try:
+        mtime = env_path.stat().st_mtime
+        if mtime != _env_file_cache["mtime"]:
+            parsed = {}
+            for line in env_path.read_text().splitlines():
+                if "=" in line and not line.lstrip().startswith("#"):
+                    k, v = line.split("=", 1)
+                    parsed[k.strip()] = v.strip()
+            _env_file_cache.update(mtime=mtime, vars=parsed)
+    except OSError:
+        pass
+    file_val = _env_file_cache["vars"].get(key, "")
+    if file_val:
+        return file_val
+    import os
+    return os.environ.get(key, default)

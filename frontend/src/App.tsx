@@ -9,6 +9,7 @@ import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { RunsPage } from "./pages/RunsPage";
 import { PluginsPage } from "./pages/PluginsPage";
+import { ModelsPage } from "./pages/ModelsPage";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -69,6 +70,7 @@ export default function App() {
           </>
         )}
         {page === "runs" && <RunsPage />}
+        {page === "models" && <ModelsPage />}
         {page === "plugins" && <PluginsPage />}
         {page === "services" && <ServicesPage health={health} />}
         {page === "settings" && <SettingsPage />}

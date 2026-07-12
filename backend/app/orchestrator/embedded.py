@@ -177,10 +177,12 @@ async def _deploy_docker(run_id: str, project_dir: Path) -> dict | None:
 
 
 async def deploy_stage(run_id: str, project_dir: Path, workspace: Path) -> dict:
+    from app.config import env_value
     from app.orchestrator.deploy_providers import (
-        DeployError, deploy_hf_space, deploy_netlify, write_zip)
+        DeployError, deploy_cloudflare_pages, deploy_hf_space, deploy_netlify,
+        deploy_surge, deploy_vercel, write_zip)
 
-    target = (os.environ.get("DEPLOY_TARGET") or "auto").strip().lower()
+    target = (env_value("DEPLOY_TARGET") or "auto").strip().lower()
     await _emit(run_id, Stage.DEPLOY, f"Deploying (target: {target})...")
     try:
         result: dict | None = None
@@ -188,6 +190,12 @@ async def deploy_stage(run_id: str, project_dir: Path, workspace: Path) -> dict:
             result = await deploy_netlify(project_dir)
         elif target in ("hf-spaces", "hf", "huggingface"):
             result = await deploy_hf_space(project_dir, run_id)
+        elif target == "vercel":
+            result = await deploy_vercel(project_dir)
+        elif target == "cloudflare-pages":
+            result = await deploy_cloudflare_pages(project_dir, run_id)
+        elif target == "surge":
+            result = await deploy_surge(project_dir, run_id)
         elif target == "docker":
             result = await _deploy_docker(run_id, project_dir)
             if result is None:

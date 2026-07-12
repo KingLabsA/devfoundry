@@ -1,59 +1,75 @@
-"""Unified LLM client: Anthropic native, or any OpenAI-compatible gateway.
+"""Unified LLM client, routed through the provider catalog.
 
-Provider resolution order:
-1. LLM_BASE_URL set  -> OpenAI-compatible /chat/completions (key: LLM_API_KEY or OPENAI_API_KEY)
-2. ANTHROPIC_API_KEY -> Anthropic Messages API
-3. OPENAI_API_KEY    -> api.openai.com
+Provider resolution:
+1. LLM_PROVIDER set (Models page) -> that provider's endpoint + key
+2. LLM_BASE_URL set -> custom OpenAI-compatible gateway
+3. ANTHROPIC_API_KEY / OPENAI_API_KEY -> direct fallback
+
+All values are read live from the project .env, so keys saved in Settings
+work immediately — no restart needed.
 """
 import logging
-import os
 
 import httpx
 
-log = logging.getLogger(__name__)
+from app.config import env_value
 
-DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5"
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+log = logging.getLogger(__name__)
 
 
 class LLMNotConfigured(RuntimeError):
     pass
 
 
+def _resolve() -> tuple[str, str, str, str]:
+    """-> (kind, base_url, api_key, model)"""
+    from app.llm_providers import get_provider, provider_base_url, provider_key
+
+    model = env_value("LLM_MODEL")
+    provider_id = env_value("LLM_PROVIDER")
+    if provider_id:
+        p = get_provider(provider_id)
+        if p is None:
+            raise LLMNotConfigured(f"unknown LLM_PROVIDER '{provider_id}' — pick one on the Models page")
+        base = provider_base_url(p)
+        if not base and p["kind"] == "openai":
+            raise LLMNotConfigured("custom gateway selected but LLM_BASE_URL is empty")
+        return p["kind"], base, provider_key(p), model or p["default_model"]
+
+    if env_value("LLM_BASE_URL"):
+        return ("openai", env_value("LLM_BASE_URL").rstrip("/"),
+                env_value("LLM_API_KEY") or env_value("OPENAI_API_KEY"), model or "gpt-4o-mini")
+    if env_value("ANTHROPIC_API_KEY"):
+        return "anthropic", "https://api.anthropic.com/v1", env_value("ANTHROPIC_API_KEY"), model or "claude-sonnet-5"
+    if env_value("OPENAI_API_KEY"):
+        return "openai", "https://api.openai.com/v1", env_value("OPENAI_API_KEY"), model or "gpt-4o-mini"
+    raise LLMNotConfigured(
+        "No LLM provider configured. Open the Models page, add a key (or use local Ollama / LM Studio), and pick a model.")
+
+
 async def complete(prompt: str, system: str = "", max_tokens: int = 4000) -> str:
-    base_url = os.environ.get("LLM_BASE_URL", "").rstrip("/")
-    model = os.environ.get("LLM_MODEL", "")
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    openai_key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    kind, base, key, model = _resolve()
+    if not model:
+        raise LLMNotConfigured("No model selected — pick one on the Models page")
 
     async with httpx.AsyncClient(timeout=300) as client:
-        if base_url or (openai_key and not anthropic_key):
-            url = f"{base_url or 'https://api.openai.com/v1'}/chat/completions"
-            messages = ([{"role": "system", "content": system}] if system else []) + [
-                {"role": "user", "content": prompt}
-            ]
+        if kind == "anthropic":
             resp = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {openai_key}"} if openai_key else {},
-                json={"model": model or DEFAULT_OPENAI_MODEL, "max_tokens": max_tokens, "messages": messages},
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
-
-        if anthropic_key:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01"},
-                json={
-                    "model": model or DEFAULT_ANTHROPIC_MODEL,
-                    "max_tokens": max_tokens,
-                    **({"system": system} if system else {}),
-                    "messages": [{"role": "user", "content": prompt}],
-                },
+                f"{base}/messages",
+                headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+                json={"model": model, "max_tokens": max_tokens,
+                      **({"system": system} if system else {}),
+                      "messages": [{"role": "user", "content": prompt}]},
             )
             resp.raise_for_status()
             return resp.json()["content"][0]["text"]
 
-    raise LLMNotConfigured(
-        "No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or LLM_BASE_URL in Settings."
-    )
+        messages = ([{"role": "system", "content": system}] if system else []) + [
+            {"role": "user", "content": prompt}]
+        resp = await client.post(
+            f"{base}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"} if key else {},
+            json={"model": model, "max_tokens": max_tokens, "messages": messages},
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
