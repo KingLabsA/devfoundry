@@ -117,6 +117,12 @@ async def _candidates(role: str) -> list[tuple[str, str]]:
     if detected:
         out.append(detected)
 
+    # OpenCode Zen free tier: keyless if the opencode CLI is authenticated.
+    from app.llm_providers import get_provider, provider_key
+    zen = get_provider("opencode")
+    if zen and provider_key(zen):
+        out.append(("opencode", env_value("LLM_MODEL_OPENCODE") or zen["default_model"]))
+
     seen: set[tuple[str, str]] = set()
     return [c for c in out if not (c in seen or seen.add(c))]
 
@@ -153,7 +159,8 @@ async def _call(provider_id: str, model: str, prompt: str, system: str, max_toke
             json={"model": model, "max_tokens": max_tokens, "messages": messages},
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        msg = resp.json()["choices"][0]["message"]
+        return msg.get("content") or msg.get("reasoning_content") or ""
 
 
 async def complete(prompt: str, system: str = "", max_tokens: int = 4000, role: str = "") -> str:

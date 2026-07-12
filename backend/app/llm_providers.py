@@ -71,6 +71,9 @@ PROVIDERS: list[dict[str, Any]] = [
     {"id": "github", "label": "GitHub Models (free with GitHub)", "kind": "openai",
      "base_url": "https://models.github.ai/inference", "key_env": "GITHUB_TOKEN",
      "default_model": "openai/gpt-4o-mini", "free": True, "local": False},
+    {"id": "opencode", "label": "OpenCode Zen (free models, auto-auth from CLI)", "kind": "openai",
+     "base_url": "https://opencode.ai/zen/v1", "key_env": "OPENCODE_API_KEY",
+     "default_model": "big-pickle", "free": True, "local": False},
     {"id": "freellmapi", "label": "FreeLLMAPI (self-hosted free gateway)", "kind": "openai",
      "base_url": "http://localhost:3002/v1", "key_env": "FREELLMAPI_KEY",
      "default_model": "", "free": True, "local": True},
@@ -90,8 +93,24 @@ def get_provider(provider_id: str) -> dict | None:
     return next((p for p in PROVIDERS if p["id"] == provider_id), None)
 
 
+def _opencode_stored_key() -> str:
+    """Reuse the OpenCode CLI's stored auth (~/.local/share/opencode/auth.json) —
+    gives keyless access to OpenCode Zen's free models if the user ran `opencode auth login`."""
+    import json
+    from pathlib import Path
+
+    path = Path.home() / ".local/share/opencode/auth.json"
+    try:
+        return json.loads(path.read_text()).get("opencode", {}).get("key", "")
+    except (OSError, ValueError):
+        return ""
+
+
 def provider_key(p: dict) -> str:
-    return env_value(p["key_env"]) if p["key_env"] else ""
+    key = env_value(p["key_env"]) if p["key_env"] else ""
+    if not key and p["id"] == "opencode":
+        key = _opencode_stored_key()
+    return key
 
 
 def provider_base_url(p: dict) -> str:
