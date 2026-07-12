@@ -6,6 +6,11 @@ export function LogViewer({ events }: { events: PipelineEvent[] }) {
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
   }, [events.length]);
+
+  if (events.length === 0) {
+    return <div className="empty-state">Submit an idea to watch the factory work — docs, code, tests, and deployment stream here live.</div>;
+  }
+
   return (
     <div className="log-viewer" ref={ref}>
       {events.map((e, i) => (

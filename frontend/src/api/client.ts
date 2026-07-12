@@ -9,6 +9,15 @@ export interface PipelineEvent {
   ts: string;
 }
 
+export interface HealthReport {
+  backend: string;
+  metagpt: boolean;
+  boltdiy: boolean;
+  opencode: boolean;
+  orc: boolean;
+  superpowers: boolean;
+}
+
 export async function createRun(idea: string): Promise<string> {
   const resp = await fetch(`${BASE}/api/runs`, {
     method: "POST",
@@ -18,6 +27,16 @@ export async function createRun(idea: string): Promise<string> {
   if (!resp.ok) throw new Error(`createRun failed: ${resp.status} ${await resp.text()}`);
   const data = await resp.json();
   return data.run_id;
+}
+
+export async function fetchHealth(): Promise<HealthReport | null> {
+  try {
+    const resp = await fetch(`${BASE}/api/health`);
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
 }
 
 export function openRunStream(runId: string, onEvent: (e: PipelineEvent) => void, onClose: () => void): WebSocket {
