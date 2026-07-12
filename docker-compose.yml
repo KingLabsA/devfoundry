@@ -1,0 +1,44 @@
+version: "3.9"
+
+x-common: &common
+  restart: unless-stopped
+  env_file: .env
+  networks: [devfoundry]
+
+services:
+  backend:
+    <<: *common
+    build: ./backend
+    ports: ["9100:9100"]
+    volumes: ["./workspace:/workspace"]
+    environment:
+      DEVFOUNDRY_WORKSPACE: /workspace
+    depends_on: [metagpt, boltdiy, opencode, orc, superpowers]
+
+  metagpt:
+    <<: *common
+    build: ./services/metagpt
+    ports: ["9101:9101"]
+
+  boltdiy:
+    <<: *common
+    build: ./services/boltdiy
+    ports: ["9102:9102"]
+
+  opencode:
+    <<: *common
+    build: ./services/opencode
+    ports: ["9103:9103"]
+
+  orc:
+    <<: *common
+    build: ./services/orc
+    ports: ["9104:9104"]
+
+  superpowers:
+    <<: *common
+    build: ./services/superpowers
+    ports: ["9105:9105"]
+
+networks:
+  devfoundry: {}
