@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     devfoundry_port: int = 9100
     devfoundry_workspace: Path = Path("./workspace")
     devfoundry_log_level: str = "INFO"
+    devfoundry_mock: bool = False
     service_timeout_seconds: int = 600
 
     class Config:

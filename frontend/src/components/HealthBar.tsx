@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HealthReport } from "../api/client";
-import { IS_TAURI, startStack } from "../api/native";
+import { IS_TAURI, ensureStackUp } from "../api/native";
 
 const SERVICES: { key: keyof HealthReport; label: string }[] = [
   { key: "metagpt", label: "MetaGPT" },
@@ -16,14 +16,16 @@ export function HealthBar({ health, checked, onOpenServices }: {
   onOpenServices: () => void;
 }) {
   const [starting, setStarting] = useState(false);
+  const [progress, setProgress] = useState("");
   const [failed, setFailed] = useState(false);
 
   const startAll = async () => {
     setStarting(true);
     setFailed(false);
     try {
-      await startStack();
-    } catch {
+      await ensureStackUp(setProgress);
+    } catch (err) {
+      setProgress(String(err));
       setFailed(true);
       onOpenServices();
     } finally {
@@ -36,13 +38,13 @@ export function HealthBar({ health, checked, onOpenServices }: {
   if (!health) {
     return (
       <div className="health-bar">
-        <span className="dot down" /> services offline
+        <span className="dot down" /> {starting && progress ? progress : "services offline"}
         {IS_TAURI && (
           <button className="btn small primary" onClick={startAll} disabled={starting}>
-            {starting ? "starting… (first run builds images)" : "▶ Start services"}
+            {starting ? "starting…" : "▶ Start services"}
           </button>
         )}
-        {failed && <button className="btn small" onClick={onOpenServices}>details</button>}
+        {failed && <button className="btn small" onClick={onOpenServices} title={progress}>details</button>}
       </div>
     );
   }

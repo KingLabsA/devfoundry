@@ -31,6 +31,37 @@ fn docker_available() -> bool {
 }
 
 #[tauri::command]
+fn docker_running() -> bool {
+    Command::new("docker")
+        .arg("info")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn start_docker_desktop() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-a", "Docker"])
+            .output()
+            .map_err(|e| format!("could not launch Docker Desktop: {e}"))
+            .and_then(|o| {
+                if o.status.success() {
+                    Ok(())
+                } else {
+                    Err(String::from_utf8_lossy(&o.stderr).to_string())
+                }
+            })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("automatic Docker startup is only implemented on macOS".into())
+    }
+}
+
+#[tauri::command]
 fn stack_status(dir: String) -> Result<String, String> {
     compose(&dir, &["ps", "--all", "--format", "json"])
 }
@@ -68,6 +99,8 @@ fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             docker_available,
+            docker_running,
+            start_docker_desktop,
             stack_status,
             start_stack,
             stop_stack,

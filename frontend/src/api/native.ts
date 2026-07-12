@@ -13,6 +13,36 @@ export function setProjectDir(dir: string) {
 }
 
 export const dockerAvailable = () => invoke<boolean>("docker_available");
+export const dockerRunning = () => invoke<boolean>("docker_running");
+export const startDockerDesktop = () => invoke<void>("start_docker_desktop");
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Full startup flow: ensure the Docker daemon is up (launching Docker Desktop
+ * if needed), then bring the compose stack up. Reports progress via callback.
+ */
+export async function ensureStackUp(onProgress: (msg: string) => void): Promise<void> {
+  if (!(await dockerAvailable())) {
+    throw new Error("Docker is not installed. Install Docker Desktop from docker.com, then try again.");
+  }
+  if (!(await dockerRunning())) {
+    onProgress("Docker daemon is not running — launching Docker Desktop…");
+    await startDockerDesktop();
+    const deadline = Date.now() + 120_000;
+    while (Date.now() < deadline) {
+      await sleep(3000);
+      if (await dockerRunning()) break;
+      onProgress("Waiting for Docker daemon to start…");
+    }
+    if (!(await dockerRunning())) {
+      throw new Error("Docker Desktop did not become ready within 2 minutes. Open it manually, then retry.");
+    }
+  }
+  onProgress("Docker is up — starting DevFoundry services (first run builds images, this can take several minutes)…");
+  await startStack();
+  onProgress("Services started.");
+}
 export const stackStatus = () => invoke<string>("stack_status", { dir: getProjectDir() });
 export const startStack = () => invoke<string>("start_stack", { dir: getProjectDir() });
 export const stopStack = () => invoke<string>("stop_stack", { dir: getProjectDir() });

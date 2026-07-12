@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { HealthReport } from "../api/client";
-import { IS_TAURI, dockerAvailable, serviceLogs, stackStatus, startStack, stopStack } from "../api/native";
+import { IS_TAURI, dockerAvailable, ensureStackUp, serviceLogs, stackStatus, stopStack } from "../api/native";
 
 interface ContainerRow {
   Service: string;
@@ -51,7 +51,7 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
     return () => clearInterval(id);
   }, [refresh]);
 
-  const run = async (label: string, fn: () => Promise<string>) => {
+  const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(label);
     setMessage(`${label}…`);
     try {
@@ -83,7 +83,7 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
         <h2>Services</h2>
         <div className="page-actions">
           <button className="btn primary" disabled={busy !== null || docker === false}
-            onClick={() => run("Starting stack (first run builds images — this can take a while)", startStack)}>
+            onClick={() => run("Starting stack", () => ensureStackUp(setMessage))}>
             {busy ? "Working…" : "▶ Start All"}
           </button>
           <button className="btn" disabled={busy !== null || docker === false}

@@ -41,8 +41,17 @@ class Orchestrator:
 
     async def _execute(self, state: RunState) -> None:
         run_id = state.run_id
-        workspace = get_settings().devfoundry_workspace / run_id
+        settings = get_settings()
+        workspace = settings.devfoundry_workspace / run_id
         workspace.mkdir(parents=True, exist_ok=True)
+        if settings.devfoundry_mock:
+            from app.orchestrator.mock import run_mock_pipeline
+            try:
+                await run_mock_pipeline(state, self._set_stage)
+            except Exception as exc:  # noqa: BLE001
+                state.error = str(exc)
+                await self._set_stage(state, Stage.FAILED, f"Demo pipeline error: {exc}")
+            return
         try:
             # 1. MetaGPT — PRD, architecture, API specs
             await self._set_stage(state, Stage.SPEC, "Generating specifications with MetaGPT")
