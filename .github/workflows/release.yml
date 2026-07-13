@@ -6,6 +6,9 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   desktop:
     strategy:
@@ -41,6 +44,7 @@ jobs:
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # --- macOS code signing + notarization (add these as repo secrets) ---
           # A Developer ID Application cert exported as base64 .p12, its password,
           # and an app-specific password for notarization. See docs/SIGNING.md.
@@ -58,4 +62,5 @@ jobs:
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: "DevFoundry ${{ github.ref_name }}"
-          releaseDraft: true
+          releaseDraft: false
+          releaseBody: "Native desktop builds for macOS, Windows, and Linux. See CHANGELOG.md."
