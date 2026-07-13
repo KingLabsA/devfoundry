@@ -210,23 +210,62 @@ async def refine_task(run_id: str, project_dir: Path, title: str, instruction: s
                 artifact="diff", task=title, changed_files=changed, summary=summary)
 
 
+# Output markers that mean "the test environment can't run", not "a test failed".
+# We must not loop the refine-on-failure step for these — the model can't fix missing deps.
+_SETUP_ERROR_MARKERS = (
+    "cannot find module", "module not found", "modulenotfounderror",
+    "no test specified", "command not found", "is not recognized",
+    "cannot find package", "err_module_not_found", "no such file or directory",
+    "missing script", "econnrefused", "importerror",
+)
+
+
+def _has_real_npm_test(project_dir: Path) -> bool:
+    pkg = project_dir / "package.json"
+    if not pkg.exists():
+        return False
+    try:
+        test = json.loads(pkg.read_text()).get("scripts", {}).get("test", "")
+    except (json.JSONDecodeError, OSError):
+        return False
+    return bool(test) and "no test specified" not in test.lower()
+
+
 async def test_stage(run_id: str, project_dir: Path) -> dict:
     await _emit(run_id, Stage.REFINE, "Running test suite...")
-    for args in (["python3", "-m", "pytest", "-q"], ["npm", "test", "--silent"]):
-        marker = "pytest.ini" if args[0] == "python3" else "package.json"
-        if args[0] == "python3" and not list(project_dir.rglob("test_*.py")) and not list(project_dir.rglob("*_test.py")):
-            continue
-        if args[0] == "npm" and not (project_dir / marker).exists():
-            continue
-        code, out = await _run_cmd(args, project_dir)
-        result = {"passed": 1 if code == 0 else 0, "failed": 0 if code == 0 else 1, "failures": out[-3000:] if code else ""}
-        await _emit(run_id, Stage.REFINE, "Tests passed" if code == 0 else "Tests failed", kind="status", **result)
-        return result
-    await _emit(run_id, Stage.REFINE, "No runnable test suite detected — skipping", kind="status", passed=0, failed=0)
-    return {"passed": 0, "failed": 0}
+    has_py = bool(list(project_dir.rglob("test_*.py")) or list(project_dir.rglob("*_test.py")))
+    has_js = _has_real_npm_test(project_dir)
+
+    if has_py:
+        runner = ["python3", "-m", "pytest", "-q"]
+    elif has_js:
+        if not (project_dir / "node_modules").exists():
+            await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
+            icode, iout = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"], project_dir, timeout=240)
+            if icode != 0:
+                await _emit(run_id, Stage.REFINE, "Dependency install failed — skipping tests",
+                            kind="status", passed=0, failed=0, runnable=False)
+                return {"passed": 0, "failed": 0, "runnable": False}
+        runner = ["npm", "test", "--silent"]
+    else:
+        await _emit(run_id, Stage.REFINE, "No runnable test suite — skipping", kind="status",
+                    passed=0, failed=0, runnable=False)
+        return {"passed": 0, "failed": 0, "runnable": False}
+
+    code, out = await _run_cmd(runner, project_dir, timeout=300)
+    if code != 0 and any(m in out.lower() for m in _SETUP_ERROR_MARKERS):
+        await _emit(run_id, Stage.REFINE, "Test environment not runnable — skipping", kind="status",
+                    passed=0, failed=0, runnable=False)
+        return {"passed": 0, "failed": 0, "runnable": False}
+    result = {"passed": 1 if code == 0 else 0, "failed": 0 if code == 0 else 1,
+              "failures": out[-3000:] if code else "", "runnable": True}
+    await _emit(run_id, Stage.REFINE, "Tests passed" if code == 0 else "Tests failed", kind="status", **result)
+    return result
 
 
-async def _deploy_docker(run_id: str, project_dir: Path) -> dict | None:
+async def _deploy_docker(run_id: str, project_dir: Path, require_dockerfile: bool = False) -> dict | None:
+    if require_dockerfile and not (project_dir / "Dockerfile").exists():
+        return None  # in auto mode, don't attempt a build the project isn't set up for
     if not shutil.which("docker"):
         return None
     code, _ = await _run_cmd(["docker", "info"], project_dir, timeout=15)
@@ -235,7 +274,7 @@ async def _deploy_docker(run_id: str, project_dir: Path) -> dict | None:
     tag = f"devfoundry-app:{run_id[:8]}"
     code, out = await _run_cmd(["docker", "build", "-t", tag, str(project_dir)], project_dir, timeout=600)
     if code != 0:
-        await _emit(run_id, Stage.DEPLOY, "Container build failed — falling back", kind="log")
+        await _emit(run_id, Stage.DEPLOY, "Container build failed — packaging zip instead", kind="log")
         return None
     return {"provider": "docker", "image": tag, "logs": out[-2000:]}
 
@@ -268,8 +307,8 @@ async def deploy_stage(run_id: str, project_dir: Path, workspace: Path, deploy_c
                 raise DeployError("Docker deploy requested but Docker is not available")
         elif target == "zip":
             result = write_zip(project_dir, workspace)
-        else:  # auto
-            result = await _deploy_docker(run_id, project_dir) or write_zip(project_dir, workspace)
+        else:  # auto — Docker only if the project ships a Dockerfile, else zip bundle
+            result = await _deploy_docker(run_id, project_dir, require_dockerfile=True) or write_zip(project_dir, workspace)
         await _emit(run_id, Stage.DEPLOY,
                     f"Deployed via {result.get('provider')}: {result.get('url') or result.get('image') or result.get('bundle')}",
                     kind="artifact", artifact="deployment", **result)
@@ -306,7 +345,9 @@ async def run_embedded_pipeline(state: RunState, set_stage, workspace: Path) -> 
         await refine_task(run_id, project_dir, task["title"], task["description"] or task["title"])
     for i in range(MAX_REFINE_ITERATIONS):
         results = await test_stage(run_id, project_dir)
-        if results.get("failed", 0) == 0:
+        # Only iterate on genuine, runnable test failures — never loop on a
+        # non-runnable environment (missing deps, no test script, etc.).
+        if not results.get("runnable") or results.get("failed", 0) == 0:
             break
         await refine_task(run_id, project_dir, f"Fix failing tests (iteration {i+1})",
                           f"Fix these test failures:\n{results.get('failures', '')}")
