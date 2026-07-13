@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { IS_TAURI, parseEnv, readEnv } from "../api/native";
 
 const BASE = "http://localhost:9100";
 
@@ -16,24 +17,50 @@ interface McpServer {
 interface McpTool { name: string; description?: string }
 interface Provider { id: string; label: string; free: boolean; configured: boolean }
 
-// Curated, ready-to-install MCP servers (official + popular). One-click add.
-const CATALOG: { name: string; desc: string; command: string; args: string[] }[] = [
-  { name: "filesystem", desc: "Read/write files in an allowed directory", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"] },
-  { name: "fetch", desc: "Fetch and convert web pages to markdown", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-fetch"] },
-  { name: "memory", desc: "Persistent knowledge-graph memory", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-memory"] },
-  { name: "git", desc: "Inspect and operate on git repositories", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-git"] },
-  { name: "sequential-thinking", desc: "Structured step-by-step reasoning", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"] },
-  { name: "time", desc: "Time and timezone conversions", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-time"] },
-  { name: "sqlite", desc: "Query a local SQLite database", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-sqlite"] },
-  { name: "everything", desc: "Reference server exercising all MCP features", command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-everything"] },
+// Curated MCP servers. `runner` picks npx (TypeScript) or uvx (Python).
+// `needsEnv` keys are pulled from your .env on install so the server gets them.
+interface CatalogItem {
+  name: string; desc: string; command: string; args: string[];
+  cat: string; needsEnv?: string[];
+}
+const CATALOG: CatalogItem[] = [
+  // official reference — TypeScript (npx)
+  { name: "filesystem", desc: "Read/write files in an allowed directory", cat: "Files & Data",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"] },
+  { name: "memory", desc: "Persistent knowledge-graph memory (RAG-style recall)", cat: "Memory",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-memory"] },
+  { name: "sequential-thinking", desc: "Structured step-by-step reasoning", cat: "Reasoning",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-sequential-thinking"] },
+  { name: "everything", desc: "Reference server exercising all MCP features", cat: "Dev",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-everything"] },
+  // official reference — Python (uvx)
+  { name: "fetch", desc: "Fetch and convert web pages to markdown", cat: "Web",
+    command: "uvx", args: ["mcp-server-fetch"] },
+  { name: "git", desc: "Inspect and operate on git repositories", cat: "Dev",
+    command: "uvx", args: ["mcp-server-git"] },
+  { name: "time", desc: "Time and timezone conversions", cat: "Utility",
+    command: "uvx", args: ["mcp-server-time"] },
+  { name: "sqlite", desc: "Query a local SQLite database", cat: "Files & Data",
+    command: "uvx", args: ["mcp-server-sqlite", "--db-path", "/tmp/mcp.db"] },
+  // popular third-party
+  { name: "github", desc: "GitHub repos, issues, PRs, code search", cat: "Dev",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-github"], needsEnv: ["GITHUB_TOKEN"] },
+  { name: "brave-search", desc: "Web search via Brave", cat: "Web",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-brave-search"], needsEnv: ["BRAVE_API_KEY"] },
+  { name: "tavily", desc: "AI-optimized web search & extract", cat: "Web",
+    command: "npx", args: ["-y", "tavily-mcp"], needsEnv: ["TAVILY_API_KEY"] },
+  { name: "playwright", desc: "Drive a browser (navigate, click, scrape)", cat: "Web",
+    command: "npx", args: ["-y", "@playwright/mcp@latest"] },
+  { name: "puppeteer", desc: "Headless Chrome automation", cat: "Web",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-puppeteer"] },
+  { name: "postgres", desc: "Query a PostgreSQL database (read-only)", cat: "Files & Data",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/postgres"] },
+  { name: "context7", desc: "Up-to-date library docs & code examples", cat: "Dev",
+    command: "npx", args: ["-y", "@upstash/context7-mcp"] },
+  { name: "n8n", desc: "n8n workflow automation (528 nodes)", cat: "Automation",
+    command: "npx", args: ["-y", "n8n-mcp"] },
+  { name: "slack", desc: "Post and read Slack messages", cat: "Automation",
+    command: "npx", args: ["-y", "@modelcontextprotocol/server-slack"], needsEnv: ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"] },
 ];
 
 export function PluginsPage() {
@@ -86,15 +113,27 @@ export function PluginsPage() {
     await refresh();
   };
 
-  const installFromCatalog = async (item: typeof CATALOG[number]) => {
+  const installFromCatalog = async (item: CatalogItem) => {
     setBusy(true);
     try {
+      const env: Record<string, string> = {};
+      const missing: string[] = [];
+      if (item.needsEnv && IS_TAURI) {
+        const values = parseEnv(await readEnv());
+        for (const k of item.needsEnv) {
+          if (values[k]) env[k] = values[k];
+          else missing.push(k);
+        }
+      }
       const resp = await fetch(`${BASE}/api/mcp/servers`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: item.name, transport: "stdio", command: item.command, args: item.args }),
+        body: JSON.stringify({ name: item.name, transport: "stdio", command: item.command,
+                               args: item.args, env }),
       });
       if (!resp.ok) throw new Error(await resp.text());
-      setMessage(`Installed ${item.name}`);
+      setMessage(missing.length
+        ? `Installed ${item.name} — add ${missing.join(", ")} in Settings for it to connect`
+        : `Installed ${item.name}`);
       await refresh();
     } catch (err) {
       setMessage(`Install failed: ${err}`);
@@ -125,18 +164,19 @@ export function PluginsPage() {
       {message && <div className="notice">{message}</div>}
 
       <section className="settings-group">
-        <h3>Plugin catalog — one-click install</h3>
-        <p className="hint">Popular Model Context Protocol servers, ready to install. Requires <code>npx</code> (Node).</p>
+        <h3>Plugin catalog — {CATALOG.length} servers, one-click install</h3>
+        <p className="hint">Model Context Protocol servers via <code>npx</code> (Node) or <code>uvx</code> (Python).
+          Servers marked 🔑 read their key from your <code>.env</code> (set it in Settings).</p>
         <div className="catalog-grid">
           {CATALOG.map((item) => {
             const installed = (servers ?? []).some((s) => s.name === item.name);
             return (
               <div className="catalog-card" key={item.name}>
-                <div className="catalog-name">{item.name}</div>
-                <div className="catalog-desc">{item.desc}</div>
+                <div className="catalog-name">{item.name} <span className="catalog-cat">{item.cat}</span></div>
+                <div className="catalog-desc">{item.desc}{item.needsEnv ? " 🔑" : ""}</div>
                 <button className="btn small primary" disabled={busy || installed}
                   onClick={() => installFromCatalog(item)}>
-                  {installed ? "✓ installed" : "install"}
+                  {installed ? "✓ installed" : `install (${item.command})`}
                 </button>
               </div>
             );

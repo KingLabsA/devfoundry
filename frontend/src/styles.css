@@ -402,3 +402,8 @@ body {
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
 .markdown th { background: var(--panel-2); font-weight: 600; }
 .markdown strong { color: var(--text); font-weight: 700; }
+
+/* ---- catalog category + template chip ---- */
+.catalog-cat { color: var(--muted); font-size: 10px; font-weight: 400; border: 1px solid var(--border);
+  border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.chip-cat { color: var(--muted); font-size: 10px; opacity: 0.7; }

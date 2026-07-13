@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { IS_TAURI, mergeEnv, readEnv, saveEnv } from "../api/native";
+import { IS_TAURI, mergeEnv, readEnv, saveEnv, systemSpecs } from "../api/native";
 
 const BASE = "http://localhost:9100";
+
+interface HwRec {
+  tier: string; metal: boolean; note: string;
+  recommended: { ollama: string; hf: string; label: string } | null;
+  options: { ollama: string; hf: string; label: string }[];
+  specs: Record<string, unknown>;
+}
+interface RouterInfo {
+  total: number; connected: number; free_connected: string[];
+  paid_connected: string[]; suggested_rotation: string[];
+}
 
 interface Provider {
   id: string;
@@ -37,6 +48,8 @@ export function ModelsPage() {
   const [rotationInput, setRotationInput] = useState("");
   const [experts, setExperts] = useState<Record<string, string>>({});
   const [modelFilter, setModelFilter] = useState("");
+  const [hw, setHw] = useState<HwRec | null>(null);
+  const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -53,7 +66,31 @@ export function ModelsPage() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  const loadHardware = useCallback(async () => {
+    try {
+      const [r] = await Promise.all([fetch(`${BASE}/api/router/providers`).then((x) => x.json())]);
+      setRouterInfo(r);
+    } catch { /* offline */ }
+    if (!IS_TAURI) return;
+    try {
+      const specs = await systemSpecs();
+      const rec = await fetch(`${BASE}/api/hardware/recommend`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(specs),
+      }).then((x) => x.json());
+      setHw(rec);
+    } catch { /* not desktop */ }
+  }, []);
+
+  useEffect(() => { refresh(); loadHardware(); }, [refresh, loadHardware]);
+
+  const buildAutoRouter = async () => {
+    if (!routerInfo?.suggested_rotation.length) return;
+    const rot = routerInfo.suggested_rotation.join(", ");
+    setRotationInput(rot);
+    await saveToEnv({ LLM_ROTATION: rot });
+    setMessage(`Auto-router set: ${routerInfo.free_connected.length} free providers in rotation`);
+    await refresh();
+  };
 
   const saveToEnv = async (updates: Record<string, string>) => {
     const original = await readEnv();
@@ -177,6 +214,47 @@ export function ModelsPage() {
         <div className="notice">No provider selected — auto-detected local runtime: <strong>{routing.autodetected_local.provider} → {routing.autodetected_local.model}</strong> will be used. Pick a model below to choose explicitly.</div>
       ) : null}
       {message && <div className="notice">{message}</div>}
+
+      {routerInfo && (
+        <section className="settings-group">
+          <h3>Auto-router — {routerInfo.connected}/{routerInfo.total} providers connected</h3>
+          <p className="hint">
+            Free: {routerInfo.free_connected.join(", ") || "none"}.{" "}
+            Paid: {routerInfo.paid_connected.join(", ") || "none"}.{" "}
+            The pipeline auto-detects and fails over across these.
+          </p>
+          {routerInfo.suggested_rotation.length > 0 && IS_TAURI && (
+            <button className="btn primary" style={{ alignSelf: "flex-start" }} onClick={buildAutoRouter}>
+              ⚡ Build rotation from {routerInfo.free_connected.length} free providers
+            </button>
+          )}
+        </section>
+      )}
+
+      {hw && (
+        <section className="settings-group">
+          <h3>Your machine — best local models</h3>
+          <p className="hint">
+            {String(hw.specs.chip || hw.specs.arch)} · {String(hw.specs.ram_gb)}GB RAM · {String(hw.specs.cpu_cores)} cores
+            {hw.metal ? " · Metal GPU" : ""} — tier: <strong>{hw.tier}</strong>. {hw.note}
+          </p>
+          {hw.recommended && (
+            <div className="notice">
+              Recommended: <strong>{hw.recommended.label}</strong> — run{" "}
+              <code>ollama pull {hw.recommended.ollama}</code>, then activate it under Ollama below.
+            </div>
+          )}
+          <div className="catalog-grid">
+            {hw.options.map((o) => (
+              <div className="catalog-card" key={o.ollama}>
+                <div className="catalog-name">{o.label}</div>
+                <div className="catalog-desc mono" style={{ fontSize: 11 }}>ollama pull {o.ollama}</div>
+                <a className="btn small" href={`https://huggingface.co/${o.hf}`} target="_blank" rel="noreferrer">HF ↗</a>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {IS_TAURI && (
         <section className="settings-group">

@@ -134,6 +134,34 @@ fn docker_running() -> bool {
 }
 
 #[tauri::command]
+fn system_specs() -> HashMap<String, String> {
+    let mut s = HashMap::new();
+    s.insert("arch".into(), std::env::consts::ARCH.to_string());
+    s.insert("os".into(), std::env::consts::OS.to_string());
+
+    #[cfg(target_os = "macos")]
+    {
+        let sysctl = |k: &str| Command::new("sysctl").args(["-n", k]).output().ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()).unwrap_or_default();
+        let mem_bytes: u64 = sysctl("hw.memsize").parse().unwrap_or(0);
+        s.insert("ram_gb".into(), (mem_bytes / 1_073_741_824).to_string());
+        s.insert("cpu_cores".into(), sysctl("hw.ncpu"));
+        let chip = sysctl("machdep.cpu.brand_string");
+        s.insert("chip".into(), if chip.is_empty() { "Apple Silicon".into() } else { chip });
+        // Apple Silicon has an integrated Metal GPU sharing unified memory.
+        s.insert("gpu".into(), if std::env::consts::ARCH == "aarch64" { "Apple Metal (unified)".into() } else { "".into() });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        s.insert("ram_gb".into(), "0".into());
+        s.insert("cpu_cores".into(), "0".into());
+        s.insert("chip".into(), "unknown".into());
+        s.insert("gpu".into(), "".into());
+    }
+    s
+}
+
+#[tauri::command]
 fn open_url_window(app: tauri::AppHandle, url: String, label: String, title: String) -> Result<(), String> {
     // Open an external URL in a native child webview — bypasses X-Frame-Options
     // (used for the FreeLLMAPI dashboard and deployed-app previews).
@@ -240,6 +268,7 @@ fn main() {
             docker_available,
             docker_running,
             open_url_window,
+            system_specs,
             start_docker_desktop,
             stack_status,
             start_stack,

@@ -15,6 +15,12 @@ export function setProjectDir(dir: string) {
 export const openUrlWindow = (url: string, label: string, title: string) =>
   invoke<void>("open_url_window", { url, label, title });
 
+export interface Specs { ram_gb: number; cpu_cores: number; arch: string; chip: string; gpu: string }
+export const systemSpecs = () => invoke<Record<string, string>>("system_specs").then((s) => ({
+  ram_gb: Number(s.ram_gb || 0), cpu_cores: Number(s.cpu_cores || 0),
+  arch: s.arch || "", chip: s.chip || "", gpu: s.gpu || "",
+} as Specs));
+
 export const dockerAvailable = () => invoke<boolean>("docker_available");
 export const dockerRunning = () => invoke<boolean>("docker_running");
 export const startDockerDesktop = () => invoke<void>("start_docker_desktop");

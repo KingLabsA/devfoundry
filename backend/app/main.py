@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.extra_routes import router as extra_router
+from app.api.hardware_routes import router as hardware_router
 from app.api.llm_routes import router as llm_router
 from app.api.mcp_routes import router as mcp_router
 from app.api.project_routes import router as project_router
@@ -23,6 +24,7 @@ app.include_router(project_router)
 app.include_router(llm_router)
 app.include_router(mcp_router)
 app.include_router(extra_router)
+app.include_router(hardware_router)
 app.include_router(ws_router)
 
 
