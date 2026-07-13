@@ -176,18 +176,20 @@ async def _deploy_docker(run_id: str, project_dir: Path) -> dict | None:
     return {"provider": "docker", "image": tag, "logs": out[-2000:]}
 
 
-async def deploy_stage(run_id: str, project_dir: Path, workspace: Path) -> dict:
+async def deploy_stage(run_id: str, project_dir: Path, workspace: Path, deploy_config: dict | None = None) -> dict:
     from app.config import env_value
     from app.orchestrator.deploy_providers import (
         DeployError, deploy_cloudflare_pages, deploy_hf_space, deploy_netlify,
         deploy_surge, deploy_vercel, write_zip)
 
-    target = (env_value("DEPLOY_TARGET") or "auto").strip().lower()
-    await _emit(run_id, Stage.DEPLOY, f"Deploying (target: {target})...")
+    cfg = deploy_config or {}
+    target = (cfg.get("target") or env_value("DEPLOY_TARGET") or "auto").strip().lower()
+    domain = (cfg.get("domain") or "").strip()
+    await _emit(run_id, Stage.DEPLOY, f"Deploying (target: {target}{', domain: ' + domain if domain else ''})...")
     try:
         result: dict | None = None
         if target == "netlify":
-            result = await deploy_netlify(project_dir)
+            result = await deploy_netlify(project_dir, domain)
         elif target in ("hf-spaces", "hf", "huggingface"):
             result = await deploy_hf_space(project_dir, run_id)
         elif target == "vercel":
@@ -195,7 +197,7 @@ async def deploy_stage(run_id: str, project_dir: Path, workspace: Path) -> dict:
         elif target == "cloudflare-pages":
             result = await deploy_cloudflare_pages(project_dir, run_id)
         elif target == "surge":
-            result = await deploy_surge(project_dir, run_id)
+            result = await deploy_surge(project_dir, run_id, domain)
         elif target == "docker":
             result = await _deploy_docker(run_id, project_dir)
             if result is None:
@@ -246,6 +248,7 @@ async def run_embedded_pipeline(state: RunState, set_stage, workspace: Path) -> 
                           f"Fix these test failures:\n{results.get('failures', '')}")
 
     await set_stage(state, Stage.DEPLOY, "Packaging & deploying")
-    state.artifacts["deployment"] = await deploy_stage(run_id, project_dir, workspace)
+    state.artifacts["deployment"] = await deploy_stage(
+        run_id, project_dir, workspace, state.artifacts.get("deploy_config"))
 
     await set_stage(state, Stage.DONE, "Pipeline complete")

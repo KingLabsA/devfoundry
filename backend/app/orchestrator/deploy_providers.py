@@ -55,14 +55,21 @@ def write_zip(project_dir: Path, workspace: Path) -> dict:
     return {"provider": "zip", "bundle": str(archive)}
 
 
-async def deploy_netlify(project_dir: Path) -> dict:
-    """Create a new Netlify site and deploy the project as a static zip. Free tier."""
+async def deploy_netlify(project_dir: Path, custom_domain: str = "") -> dict:
+    """Create a new Netlify site and deploy the project as a static zip. Free tier.
+    custom_domain: a full domain (foo.com) or bare subdomain used as the site name."""
     token = env_value("NETLIFY_AUTH_TOKEN")
     if not token:
         raise DeployError("NETLIFY_AUTH_TOKEN not set — add it in Settings (free account at netlify.com)")
     headers = {"Authorization": f"Bearer {token}"}
+    site_body: dict = {}
+    if custom_domain:
+        if "." in custom_domain and not custom_domain.endswith(".netlify.app"):
+            site_body["custom_domain"] = custom_domain
+        else:
+            site_body["name"] = custom_domain.replace(".netlify.app", "")
     async with httpx.AsyncClient(timeout=300) as client:
-        site = await client.post("https://api.netlify.com/api/v1/sites", headers=headers, json={})
+        site = await client.post("https://api.netlify.com/api/v1/sites", headers=headers, json=site_body)
         if site.status_code not in (200, 201):
             raise DeployError(f"Netlify site creation failed: {site.status_code} {site.text[:300]}")
         site_id = site.json()["id"]
@@ -74,7 +81,8 @@ async def deploy_netlify(project_dir: Path) -> dict:
         )
         if deploy.status_code not in (200, 201):
             raise DeployError(f"Netlify deploy failed: {deploy.status_code} {deploy.text[:300]}")
-    return {"provider": "netlify", "url": url, "site_id": site_id, "free_tier": True}
+    return {"provider": "netlify", "url": url, "site_id": site_id,
+            "custom_domain": custom_domain or None, "free_tier": True}
 
 
 async def deploy_hf_space(project_dir: Path, run_id: str) -> dict:
@@ -132,18 +140,19 @@ async def deploy_cloudflare_pages(project_dir: Path, run_id: str) -> dict:
     return {"provider": "cloudflare-pages", "url": url, "project": project, "free_tier": True}
 
 
-async def deploy_surge(project_dir: Path, run_id: str) -> dict:
-    """Deploy static files to surge.sh. Free."""
+async def deploy_surge(project_dir: Path, run_id: str, custom_domain: str = "") -> dict:
+    """Deploy static files to surge.sh. Free. Supports a custom domain."""
     login = env_value("SURGE_LOGIN")
     token = env_value("SURGE_TOKEN")
     if not login or not token:
         raise DeployError("SURGE_LOGIN / SURGE_TOKEN not set — add them in Settings (free: npx surge token)")
-    domain = f"devfoundry-{run_id[:8]}.surge.sh"
+    domain = custom_domain.strip() or f"devfoundry-{run_id[:8]}.surge.sh"
     code, out = await _cli(["npx", "-y", "surge", ".", domain], project_dir,
                            {"SURGE_LOGIN": login, "SURGE_TOKEN": token})
     if code != 0:
         raise DeployError(f"Surge deploy failed: {out[-500:]}")
-    return {"provider": "surge", "url": f"https://{domain}", "free_tier": True}
+    return {"provider": "surge", "url": f"https://{domain}",
+            "custom_domain": custom_domain or None, "free_tier": True}
 
 
 def available_providers() -> list[dict]:

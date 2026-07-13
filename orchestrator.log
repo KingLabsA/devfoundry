@@ -1,10 +1,123 @@
-INFO:     Started server process [15413]
+INFO:     Started server process [2986]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:9100 (Press CTRL+C to quit)
-INFO:     127.0.0.1:49888 - "GET /api/health HTTP/1.1" 200 OK
-2026-07-13 06:59:20,399 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 401 Unauthorized"
-2026-07-13 06:59:20,446 INFO [httpx] HTTP Request: GET http://localhost:11434/v1/models "HTTP/1.1 200 OK"
-2026-07-13 06:59:20,447 INFO [app.llm] auto-detected local LLM: ollama -> FableForge-AI/mythos-9b-enhanced:latest
-2026-07-13 06:59:21,078 INFO [httpx] HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
-INFO:     127.0.0.1:49900 - "POST /api/llm/test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63332 - "GET /api/deploy/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63333 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63338 - "POST /api/runs/nope/stop HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63340 - "GET /api/deploy/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63355 - "GET /api/health HTTP/1.1" 200 OK
+2026-07-13 16:14:19,653 INFO [app.api.routes] Started run 82a9ba6dcf07451884accb065e4377c9
+INFO:     127.0.0.1:63363 - "POST /api/runs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:63366 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+2026-07-13 16:14:19,800 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 401 Unauthorized"
+2026-07-13 16:14:19,823 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 401 Unauthorized"
+2026-07-13 16:14:19,824 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 401 Unauthorized"
+INFO:     127.0.0.1:63374 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+2026-07-13 16:14:19,895 INFO [httpx] HTTP Request: GET http://localhost:11434/v1/models "HTTP/1.1 200 OK"
+2026-07-13 16:14:19,896 INFO [httpx] HTTP Request: GET http://localhost:11434/v1/models "HTTP/1.1 200 OK"
+2026-07-13 16:14:19,896 INFO [httpx] HTTP Request: GET http://localhost:11434/v1/models "HTTP/1.1 200 OK"
+2026-07-13 16:14:19,897 INFO [app.llm] auto-detected local LLM: ollama -> FableForge-AI/mythos-9b-enhanced:latest
+2026-07-13 16:14:19,897 INFO [app.llm] auto-detected local LLM: ollama -> FableForge-AI/mythos-9b-enhanced:latest
+2026-07-13 16:14:19,898 INFO [app.llm] auto-detected local LLM: ollama -> FableForge-AI/mythos-9b-enhanced:latest
+2026-07-13 16:14:20,623 INFO [httpx] HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-13 16:14:20,643 INFO [httpx] HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-13 16:14:20,950 INFO [httpx] HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:63390 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63398 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63400 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63408 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63417 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63419 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63429 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63437 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63439 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63449 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63457 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63459 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+2026-07-13 16:15:04,024 INFO [httpx] HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:63471 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63481 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63483 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63492 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63501 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63503 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63514 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63525 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63527 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63538 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63544 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63546 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63560 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63565 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63567 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63580 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63585 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63588 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63607 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63610 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63629 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63631 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63634 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63651 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63653 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63655 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63669 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63671 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63676 - "GET /api/health HTTP/1.1" 200 OK
+2026-07-13 16:16:46,938 ERROR [app.orchestrator.pipeline] Embedded run 82a9ba6dcf07451884accb065e4377c9 failed
+Traceback (most recent call last):
+  File "/Users/jahblesslion/Documents/devfoundry/backend/app/orchestrator/pipeline.py", line 67, in _execute
+    await run_embedded_pipeline(state, self._set_stage, workspace)
+  File "/Users/jahblesslion/Documents/devfoundry/backend/app/orchestrator/embedded.py", line 233, in run_embedded_pipeline
+    files = await codegen_stage(run_id, state.idea, specs, project_dir)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jahblesslion/Documents/devfoundry/backend/app/orchestrator/embedded.py", line 104, in codegen_stage
+    text = await complete(
+           ^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jahblesslion/Documents/devfoundry/backend/app/llm.py", line 176, in complete
+    result = await _call(provider_id, model, prompt, system, max_tokens)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jahblesslion/Documents/devfoundry/backend/app/llm.py", line 162, in _call
+    msg = resp.json()["choices"][0]["message"]
+          ~~~~~~~~~^^
+  File "/Users/jahblesslion/Documents/devfoundry/backend/.venv/lib/python3.14/site-packages/httpx/_models.py", line 832, in json
+    return jsonlib.loads(self.content, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 491 column 1 (char 2695)
+INFO:     127.0.0.1:63690 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63692 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63694 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63696 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63702 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63721 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63737 - "PUT /api/runs/82a9ba6dcf07451884accb065e4377c9/file HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63739 - "PUT /api/runs/82a9ba6dcf07451884accb065e4377c9/file HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63741 - "PUT /api/runs/82a9ba6dcf07451884accb065e4377c9/file HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63743 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63745 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/file?path=index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63747 - "GET /api/runs/82a9ba6dcf07451884accb065e4377c9/download HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63749 - "POST /api/runs/82a9ba6dcf07451884accb065e4377c9/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63753 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63770 - "POST /api/runs/82a9ba6dcf07451884accb065e4377c9/redeploy HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:63772 - "POST /api/runs/82a9ba6dcf07451884accb065e4377c9/stop HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63774 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63790 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63804 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63821 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2986]

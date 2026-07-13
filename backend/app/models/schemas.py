@@ -19,10 +19,17 @@ class Stage(str, Enum):
 
 class RunRequest(BaseModel):
     idea: str = Field(..., min_length=10, max_length=4000)
+    deploy_target: str = ""      # override DEPLOY_TARGET for this run
+    custom_domain: str = ""      # e.g. myapp.surge.sh / netlify site name
 
 
 class RunCreated(BaseModel):
     run_id: str
+
+
+class DeployRequest(BaseModel):
+    deploy_target: str = ""
+    custom_domain: str = ""
 
 
 class PipelineEvent(BaseModel):

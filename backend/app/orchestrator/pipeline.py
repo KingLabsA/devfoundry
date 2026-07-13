@@ -29,11 +29,20 @@ class Orchestrator:
         self.runs: dict[str, RunState] = {}
         self._tasks: dict[str, asyncio.Task] = {}
 
-    def start_run(self, idea: str) -> RunState:
+    def start_run(self, idea: str, deploy_target: str = "", custom_domain: str = "") -> RunState:
         state = RunState(idea=idea)
+        if deploy_target or custom_domain:
+            state.artifacts["deploy_config"] = {"target": deploy_target, "domain": custom_domain}
         self.runs[state.run_id] = state
         self._tasks[state.run_id] = asyncio.create_task(self._execute(state))
         return state
+
+    async def stop_run(self, run_id: str) -> bool:
+        task = self._tasks.get(run_id)
+        if task is None or task.done():
+            return False
+        task.cancel()
+        return True
 
     async def _set_stage(self, state: RunState, stage: Stage, message: str) -> None:
         state.stage = stage
@@ -56,6 +65,9 @@ class Orchestrator:
             from app.orchestrator.embedded import run_embedded_pipeline
             try:
                 await run_embedded_pipeline(state, self._set_stage, workspace)
+            except asyncio.CancelledError:
+                state.error = "stopped by user"
+                await asyncio.shield(self._set_stage(state, Stage.FAILED, "Run stopped by user"))
             except Exception as exc:  # noqa: BLE001
                 state.error = str(exc)
                 log.exception("Embedded run %s failed", run_id)

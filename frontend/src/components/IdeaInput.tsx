@@ -6,7 +6,14 @@ const EXAMPLES = [
   "Build a markdown notes app with tags and search",
 ];
 
-export function IdeaInput({ disabled, onSubmit }: { disabled: boolean; onSubmit: (idea: string) => void }) {
+export function IdeaInput({
+  disabled, onSubmit, running, onStop,
+}: {
+  disabled: boolean;
+  onSubmit: (idea: string) => void;
+  running?: boolean;
+  onStop?: () => void;
+}) {
   const [idea, setIdea] = useState("");
   const valid = idea.trim().length >= 10;
 
@@ -33,9 +40,11 @@ export function IdeaInput({ disabled, onSubmit }: { disabled: boolean; onSubmit:
           rows={3}
           disabled={disabled}
         />
-        <button type="submit" disabled={disabled || !valid}>
-          {disabled ? "Building…" : "Forge It"}
-        </button>
+        {running ? (
+          <button type="button" className="stop-btn-lg" onClick={onStop}>■ Stop</button>
+        ) : (
+          <button type="submit" disabled={disabled || !valid}>Forge It</button>
+        )}
       </form>
       {!disabled && (
         <div className="examples">
