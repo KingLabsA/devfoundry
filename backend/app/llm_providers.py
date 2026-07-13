@@ -169,8 +169,8 @@ def catalog() -> list[dict]:
             "key_url": meta.get("key_url", ""), "recommended": meta.get("recommended", ""),
             "note": meta.get("note", ""),
         })
-    # configured providers first, then free, keeping catalog order within groups
-    rows.sort(key=lambda r: (not r["configured"], not r["free"]))
+    # active first, then configured, then free, keeping catalog order within groups
+    rows.sort(key=lambda r: (not r["active"], not r["configured"], not r["free"]))
     return rows
 
 
