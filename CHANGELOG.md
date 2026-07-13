@@ -2,7 +2,7 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
-## [Unreleased]
+## [0.2.0] — first public release
 
 ### Added
 - **Embedded mode** (default): the whole pipeline runs in-process; the app auto-starts the
@@ -32,6 +32,12 @@ All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 - **Deep Research**: resilient keyless search chain after Jina search started requiring a key.
 - **"No internet" / CSP**: loosened the Tauri CSP so the webview can reach https + preview external assets.
 - Live `.env` re-read so saved keys apply without restarting the orchestrator.
+
+### Native & release (0.2.0)
+- Native menus, system tray, global hotkey ⌘⇧A, completion notifications.
+- Keychain-backed secrets; live dev-server Canvas; real build-verify loop (apps compile + test).
+- Qdrant vector store for RAG (with local fallback); per-project code RAG.
+- Auto-updater (signed); cross-platform desktop release CI (macOS/Windows/Linux).
 
 ## [0.1.0] — initial
 - Tauri + React desktop app, FastAPI orchestrator, five-stage pipeline, live streaming to the UI.
