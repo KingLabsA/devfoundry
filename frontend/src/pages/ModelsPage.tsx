@@ -14,6 +14,9 @@ interface Provider {
   default_model: string;
   configured: boolean;
   active: boolean;
+  key_url: string;
+  recommended: string;
+  note: string;
 }
 
 interface Routing {
@@ -33,6 +36,7 @@ export function ModelsPage() {
   const [message, setMessage] = useState("");
   const [rotationInput, setRotationInput] = useState("");
   const [experts, setExperts] = useState<Record<string, string>>({});
+  const [modelFilter, setModelFilter] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -119,6 +123,20 @@ export function ModelsPage() {
     }
   };
 
+  const useProvider = async (p: Provider) => {
+    const model = p.recommended || p.default_model;
+    setBusy(p.id);
+    try {
+      await saveToEnv({ LLM_PROVIDER: p.id, LLM_MODEL: model });
+      setMessage(`Active: ${p.label}${model ? ` → ${model}` : " (auto-detect model)"}`);
+      await refresh();
+    } catch (err) {
+      setMessage(`Activate failed: ${err}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const saveRouting = async () => {
     setBusy("__routing");
     try {
@@ -195,6 +213,7 @@ export function ModelsPage() {
               <td>
                 {p.active ? "● " : ""}{p.label}
                 <div className="mono" style={{ opacity: 0.55, fontSize: 11 }}>{p.base_url || "set LLM_BASE_URL in Settings"}</div>
+                {p.note && <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 2 }}>{p.note}</div>}
               </td>
               <td>
                 <span className={`badge ${p.local ? "run" : "off"}`}>{p.local ? "local" : "cloud"}</span>{" "}
@@ -203,21 +222,31 @@ export function ModelsPage() {
               <td><span className={`badge ${p.configured ? "ok" : "off"}`}>{p.configured ? "ready" : "needs key"}</span></td>
               <td>
                 {p.key_env && IS_TAURI ? (
-                  <span className="field-row">
-                    <input type="password" placeholder={p.key_env} value={keyInputs[p.id] ?? ""}
-                      style={{ maxWidth: 190, padding: "5px 9px", fontSize: 12,
-                        background: "var(--bg)", border: "1px solid var(--border)",
-                        borderRadius: 7, color: "var(--text)" }}
-                      onChange={(e) => setKeyInputs((k) => ({ ...k, [p.id]: e.target.value }))}
-                      spellCheck={false} autoComplete="off" />
-                    <button className="btn small" disabled={busy === p.id || !keyInputs[p.id]}
-                      onClick={() => saveKey(p)}>save</button>
-                  </span>
+                  <>
+                    <span className="field-row">
+                      <input type="password" placeholder={p.key_env} value={keyInputs[p.id] ?? ""}
+                        style={{ maxWidth: 180, padding: "5px 9px", fontSize: 12,
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          borderRadius: 7, color: "var(--text)" }}
+                        onChange={(e) => setKeyInputs((k) => ({ ...k, [p.id]: e.target.value }))}
+                        spellCheck={false} autoComplete="off" />
+                      <button className="btn small" disabled={busy === p.id || !keyInputs[p.id]}
+                        onClick={() => saveKey(p)}>save</button>
+                    </span>
+                    {p.key_url && !p.configured && (
+                      <a className="key-link" href={p.key_url.startsWith("http") ? p.key_url : undefined}
+                        target="_blank" rel="noreferrer">get key ↗</a>
+                    )}
+                  </>
                 ) : (
                   <span className="mono" style={{ opacity: 0.5, fontSize: 11 }}>{p.local ? "no key needed" : "—"}</span>
                 )}
               </td>
-              <td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                <button className="btn small primary" disabled={busy === p.id || (!p.configured && !p.local)}
+                  onClick={() => useProvider(p)} title={`Activate with ${p.recommended || p.default_model || "auto-detected model"}`}>
+                  Use
+                </button>{" "}
                 <button className="btn small" disabled={busy === p.id} onClick={() => fetchModels(p)}>
                   {busy === p.id ? "…" : "models"}
                 </button>
@@ -228,17 +257,25 @@ export function ModelsPage() {
       </table>
 
       {models && (
-        <div className="logs-modal" onClick={() => setModels(null)}>
+        <div className="logs-modal" onClick={() => { setModels(null); setModelFilter(""); }}>
           <div className="logs-box" onClick={(e) => e.stopPropagation()}>
             <div className="logs-head">
               <strong>{models.provider.label} — {models.list.length} models (click to activate)</strong>
-              <button className="btn small" onClick={() => setModels(null)}>close</button>
+              <button className="btn small" onClick={() => { setModels(null); setModelFilter(""); }}>close</button>
             </div>
+            <input className="model-filter" placeholder="filter models…" value={modelFilter}
+              onChange={(e) => setModelFilter(e.target.value)} spellCheck={false} autoFocus />
             <div style={{ overflow: "auto", padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: 8 }}>
               {models.list.length === 0 && <span className="muted">provider reachable, but returned no models</span>}
-              {models.list.map((m) => (
-                <button key={m} className="chip" onClick={() => selectModel(models.provider, m)}>{m}</button>
-              ))}
+              {models.list
+                .filter((m) => m.toLowerCase().includes(modelFilter.toLowerCase()))
+                .map((m) => (
+                  <button key={m} className={m === models.provider.recommended ? "chip chip-rec" : "chip"}
+                    onClick={() => selectModel(models.provider, m)}
+                    title={m === models.provider.recommended ? "recommended" : ""}>
+                    {m === models.provider.recommended ? "★ " : ""}{m}
+                  </button>
+                ))}
             </div>
           </div>
         </div>

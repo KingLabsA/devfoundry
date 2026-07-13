@@ -76,7 +76,7 @@ PROVIDERS: list[dict[str, Any]] = [
      "default_model": "big-pickle", "free": True, "local": False},
     {"id": "freellmapi", "label": "FreeLLMAPI (self-hosted free gateway)", "kind": "openai",
      "base_url": "http://localhost:3002/v1", "key_env": "FREELLMAPI_KEY",
-     "default_model": "", "free": True, "local": True},
+     "default_model": "auto", "free": True, "local": True},
     {"id": "ollama", "label": "Ollama (local)", "kind": "openai",
      "base_url": "http://localhost:11434/v1", "key_env": "",
      "default_model": "", "free": True, "local": True},
@@ -87,6 +87,36 @@ PROVIDERS: list[dict[str, Any]] = [
      "base_url": "", "key_env": "LLM_API_KEY",
      "default_model": "", "free": True, "local": True},
 ]
+
+
+# Where to get a key, and a good free/coding model to try — surfaced in the UI.
+PROVIDER_META: dict[str, dict] = {
+    "anthropic": {"key_url": "https://console.anthropic.com/settings/keys", "recommended": "claude-sonnet-5"},
+    "openai": {"key_url": "https://platform.openai.com/api-keys", "recommended": "gpt-4o-mini"},
+    "openrouter": {"key_url": "https://openrouter.ai/keys", "recommended": "deepseek/deepseek-chat-v3.1:free"},
+    "groq": {"key_url": "https://console.groq.com/keys", "recommended": "llama-3.3-70b-versatile"},
+    "google": {"key_url": "https://aistudio.google.com/apikey", "recommended": "gemini-2.0-flash"},
+    "mistral": {"key_url": "https://console.mistral.ai/api-keys", "recommended": "mistral-small-latest"},
+    "cerebras": {"key_url": "https://cloud.cerebras.ai", "recommended": "llama-3.3-70b"},
+    "together": {"key_url": "https://api.together.ai/settings/api-keys", "recommended": ""},
+    "deepseek": {"key_url": "https://platform.deepseek.com/api_keys", "recommended": "deepseek-chat"},
+    "fireworks": {"key_url": "https://fireworks.ai/account/api-keys", "recommended": ""},
+    "huggingface": {"key_url": "https://huggingface.co/settings/tokens", "recommended": ""},
+    "xai": {"key_url": "https://console.x.ai", "recommended": "grok-3-mini"},
+    "perplexity": {"key_url": "https://www.perplexity.ai/settings/api", "recommended": "sonar"},
+    "moonshot": {"key_url": "https://platform.moonshot.ai/console/api-keys", "recommended": ""},
+    "zhipu": {"key_url": "https://open.bigmodel.cn/usercenter/apikeys", "recommended": "glm-4-flash"},
+    "dashscope": {"key_url": "https://bailian.console.alibabacloud.com", "recommended": "qwen-plus"},
+    "nvidia": {"key_url": "https://build.nvidia.com", "recommended": ""},
+    "sambanova": {"key_url": "https://cloud.sambanova.ai/apis", "recommended": ""},
+    "github": {"key_url": "https://github.com/settings/tokens", "recommended": "openai/gpt-4o-mini"},
+    "opencode": {"key_url": "https://opencode.ai/auth (or run: opencode auth login)", "recommended": "big-pickle"},
+    "freellmapi": {"key_url": "https://github.com/tashfeenahmed/freellmapi", "recommended": "auto",
+                   "note": "Self-hosted gateway on :3002. Use model 'auto' to auto-route across free providers."},
+    "ollama": {"key_url": "https://ollama.com (run: ollama serve)", "recommended": "qwen2.5-coder"},
+    "lmstudio": {"key_url": "https://lmstudio.ai (start the local server)", "recommended": ""},
+    "custom": {"key_url": "", "recommended": ""},
+}
 
 
 def get_provider(provider_id: str) -> dict | None:
@@ -128,12 +158,20 @@ def is_configured(p: dict) -> bool:
 
 def catalog() -> list[dict]:
     active = env_value("LLM_PROVIDER")
-    return [{
-        "id": p["id"], "label": p["label"], "kind": p["kind"], "free": p["free"],
-        "local": p["local"], "base_url": provider_base_url(p), "key_env": p["key_env"],
-        "default_model": p["default_model"], "configured": is_configured(p),
-        "active": p["id"] == active,
-    } for p in PROVIDERS]
+    rows = []
+    for p in PROVIDERS:
+        meta = PROVIDER_META.get(p["id"], {})
+        rows.append({
+            "id": p["id"], "label": p["label"], "kind": p["kind"], "free": p["free"],
+            "local": p["local"], "base_url": provider_base_url(p), "key_env": p["key_env"],
+            "default_model": p["default_model"], "configured": is_configured(p),
+            "active": p["id"] == active,
+            "key_url": meta.get("key_url", ""), "recommended": meta.get("recommended", ""),
+            "note": meta.get("note", ""),
+        })
+    # configured providers first, then free, keeping catalog order within groups
+    rows.sort(key=lambda r: (not r["configured"], not r["free"]))
+    return rows
 
 
 async def list_models(provider_id: str) -> list[str]:

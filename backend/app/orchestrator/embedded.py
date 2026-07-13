@@ -19,22 +19,58 @@ from app.models.schemas import PipelineEvent, RunState, Stage
 log = logging.getLogger(__name__)
 
 MAX_REFINE_ITERATIONS = 3
+
+# Delimited file format — robust across all models because file contents (quotes,
+# braces, backslashes) never need escaping, unlike a JSON blob.
 CODEGEN_SYSTEM = (
-    "You are an expert full-stack engineer. Generate a complete, runnable application. "
-    'Respond with ONLY a JSON object: {"files": {"relative/path": "file content", ...}}. '
-    "Include a package manifest, entrypoint, README, and at least one test. Raw JSON only."
+    "You are an expert full-stack engineer. Generate a complete, runnable application.\n"
+    "Output EACH file using this exact format, and nothing else:\n"
+    "=== FILE: relative/path/name.ext ===\n"
+    "<full file content>\n"
+    "=== FILE: next/file.ext ===\n"
+    "<full file content>\n"
+    "Include a package manifest, an entrypoint, a README, and at least one test. "
+    "Do NOT wrap files in JSON or markdown code fences. No commentary before or after."
 )
+
+_FILE_HEADER = re.compile(r"^===\s*FILE:\s*(.+?)\s*===\s*$", re.MULTILINE)
 
 
 async def _emit(run_id: str, stage: Stage, message: str, kind: str = "log", **payload) -> None:
     await bus.publish(PipelineEvent(run_id=run_id, stage=stage, kind=kind, message=message, payload=payload))
 
 
+def _strip_fences(text: str) -> str:
+    return re.sub(r"^```[a-zA-Z0-9]*\s*|\s*```$", "", text.strip())
+
+
+def _parse_files(text: str) -> dict[str, str]:
+    """Parse the delimited '=== FILE: path ===' format into {path: content}."""
+    matches = list(_FILE_HEADER.finditer(text))
+    files: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        path = m.group(1).strip().strip("`").strip()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        content = text[m.end():end].strip("\n")
+        content = re.sub(r"^```[a-zA-Z0-9]*\n|\n```$", "", content)  # tolerate stray fences
+        if path and ".." not in path:
+            files[path] = content
+    return files
+
+
 def _extract_json(text: str) -> dict:
-    match = re.search(r"\{[\s\S]*\}", text)
+    """Fallback JSON parser with light repair (fences, trailing commas, smart quotes)."""
+    cleaned = _strip_fences(text)
+    match = re.search(r"\{[\s\S]*\}", cleaned)
     if not match:
         raise ValueError("model returned no JSON object")
-    return json.loads(match.group(0))
+    blob = match.group(0)
+    try:
+        return json.loads(blob)
+    except json.JSONDecodeError:
+        repaired = re.sub(r",\s*([}\]])", r"\1", blob)          # trailing commas
+        repaired = repaired.replace("“", '"').replace("”", '"')  # smart quotes
+        return json.loads(repaired)
 
 
 def _snapshot(project_dir: Path, max_bytes: int = 60000) -> dict[str, str]:
@@ -99,16 +135,38 @@ async def spec_stage(run_id: str, idea: str) -> dict:
     return specs
 
 
-async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path) -> list[str]:
-    await _emit(run_id, Stage.CODEGEN, "Generating full application codebase...")
-    text = await complete(
-        f"Build this application: {idea}\n\n## PRD\n{specs['prd'][:6000]}\n\n"
-        f"## Architecture\n{specs['architecture'][:4000]}\n\n## API Spec\n{specs['api_spec'][:4000]}",
-        CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
+def _files_from_response(text: str) -> dict[str, str]:
+    """Delimited format first; fall back to a JSON {files:{...}} blob."""
+    files = _parse_files(text)
+    if files:
+        return files
     data = _extract_json(text)
     files = data.get("files", data)
     if not isinstance(files, dict) or not files:
-        raise ValueError("codegen produced no files")
+        raise ValueError("no files in model response")
+    return {str(k): str(v) for k, v in files.items()}
+
+
+async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path) -> list[str]:
+    await _emit(run_id, Stage.CODEGEN, "Generating full application codebase...")
+    prompt = (f"Build this application: {idea}\n\n## PRD\n{specs['prd'][:6000]}\n\n"
+              f"## Architecture\n{specs['architecture'][:4000]}\n\n## API Spec\n{specs['api_spec'][:4000]}")
+    files: dict[str, str] = {}
+    last_err = ""
+    for attempt in range(2):
+        text = await complete(prompt, CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
+        try:
+            files = _files_from_response(text)
+            if files:
+                break
+        except (ValueError, json.JSONDecodeError) as exc:
+            last_err = str(exc)
+            await _emit(run_id, Stage.CODEGEN,
+                        f"Retry {attempt + 1}: could not parse model output ({last_err[:80]})", kind="log")
+            prompt += ("\n\nIMPORTANT: use ONLY the '=== FILE: path ===' format, "
+                       "one header per file, raw file contents, no JSON, no code fences.")
+    if not files:
+        raise ValueError(f"codegen produced no parseable files: {last_err}")
     written = _write_files(project_dir, files)
     await _emit(run_id, Stage.CODEGEN, f"Generated {len(written)} files", kind="artifact",
                 artifact="codebase_manifest", files=sorted(written))
@@ -137,13 +195,19 @@ async def refine_task(run_id: str, project_dir: Path, title: str, instruction: s
     await _emit(run_id, Stage.REFINE, f"Working on '{title}'...")
     text = await complete(
         f"Project files:\n{json.dumps(_snapshot(project_dir))}\n\nTask: {instruction}\n\n"
-        'Respond with ONLY JSON: {"files": {"path": "new full content"}, "summary": "..."} '
-        "containing every file you modified or created.",
+        "Return every file you modified or created using the '=== FILE: path ===' format "
+        "(one header per file, raw contents, no JSON, no code fences).",
         "You are an expert software engineer performing a focused code change.", max_tokens=12000, role="refine")
-    result = _extract_json(text)
-    changed = _write_files(project_dir, result.get("files", {}))
+    summary = ""
+    try:
+        files = _files_from_response(text)
+    except (ValueError, json.JSONDecodeError):
+        files = {}
+    # never write bookkeeping keys as project files
+    files = {p: c for p, c in files.items() if p.lower() not in ("summary", "notes", "explanation")}
+    changed = _write_files(project_dir, files)
     await _emit(run_id, Stage.REFINE, f"Changed {len(changed)} files for '{title}'", kind="artifact",
-                artifact="diff", task=title, changed_files=changed, summary=result.get("summary", ""))
+                artifact="diff", task=title, changed_files=changed, summary=summary)
 
 
 async def test_stage(run_id: str, project_dir: Path) -> dict:
