@@ -12,7 +12,16 @@
   "bundle": {
     "active": true,
     "targets": ["app", "dmg"],
+    "createUpdaterArtifacts": true,
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns"]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2NzgzNDU1ODMwMEJGNDUKUldSRnZ3Q0RWVFI0Tm1DTzM3Q0ZzYmdObHgyVmEyZGJOWUpPakFJbkRMem16T0ZMVHozSm03bUkK",
+      "endpoints": [
+        "https://github.com/OWNER/devfoundry/releases/latest/download/latest.json"
+      ]
+    }
   },
   "app": {
     "windows": [

@@ -102,6 +102,21 @@ export function SettingsPage() {
 
   const pickTheme = (id: string) => { applyTheme(id); setTheme(id); };
 
+  const [updateMsg, setUpdateMsg] = useState("");
+  const checkForUpdates = async () => {
+    setUpdateMsg("Checking for updates…");
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (!update) { setUpdateMsg("You're on the latest version."); return; }
+      setUpdateMsg(`Update ${update.version} available. Downloading & installing…`);
+      await update.downloadAndInstall();
+      setUpdateMsg("Update installed — restart DevFoundry to apply.");
+    } catch (err) {
+      setUpdateMsg(`Update check failed: ${err}`);
+    }
+  };
+
   const moveSecretsToKeychain = async () => {
     const text = await readEnv();
     const vals = parseEnv(text);
@@ -146,6 +161,15 @@ export function SettingsPage() {
         ))}
       </div>
       {message && <div className="notice">{message}</div>}
+
+      {tab === "general" && (
+        <section className="settings-group">
+          <h3>About & Updates</h3>
+          <p className="hint">DevFoundry v0.1.0 · <a href="https://github.com/" target="_blank" rel="noreferrer">GitHub</a></p>
+          <button className="btn" style={{ alignSelf: "flex-start" }} onClick={checkForUpdates}>↑ Check for updates</button>
+          {updateMsg && <div className="notice">{updateMsg}</div>}
+        </section>
+      )}
 
       {tab === "general" && (
         <section className="settings-group">

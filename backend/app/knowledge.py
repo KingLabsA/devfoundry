@@ -102,6 +102,7 @@ def add_entry(topic: str, text: str) -> None:
         db = _db()
         db.execute("INSERT INTO kb (topic, text, embedding) VALUES (?,?,?)", (topic, text, ""))
         db.commit()
+    _qdrant_indexed["done"] = False  # re-index Qdrant on next retrieval
 
 
 def list_entries() -> list[dict]:
@@ -110,8 +111,42 @@ def list_entries() -> list[dict]:
     return [{"id": r[0], "topic": r[1], "text": r[2]} for r in rows]
 
 
+_KB_COLLECTION = "devfoundry_knowledge"
+_qdrant_indexed = {"done": False}
+
+
+async def _qdrant_retrieve(query: str, k: int) -> list[dict] | None:
+    """Use Qdrant if reachable; index the KB into it once. Returns None if unavailable."""
+    from app import vectorstore as vs
+
+    if not await vs.available():
+        return None
+    qvec = await _embed(query)
+    if not qvec:
+        return None
+    try:
+        await vs.ensure_collection(_KB_COLLECTION, len(qvec))
+        if not _qdrant_indexed["done"]:
+            with _lock:
+                rows = _db().execute("SELECT id, topic, text FROM kb").fetchall()
+            points = []
+            for rid, topic, text in rows:
+                vec = await _embed(text)
+                if vec:
+                    points.append({"id": rid, "vector": vec, "payload": {"topic": topic, "text": text}})
+            await vs.upsert(_KB_COLLECTION, points)
+            _qdrant_indexed["done"] = True
+        return await vs.search(_KB_COLLECTION, qvec, k)
+    except Exception:  # noqa: BLE001 — any Qdrant hiccup → caller falls back
+        log.exception("qdrant knowledge retrieval failed")
+        return None
+
+
 async def retrieve(query: str, k: int = 5) -> list[dict]:
-    """Return the k most relevant KB entries (embeddings if available, else keyword)."""
+    """Return the k most relevant KB entries. Qdrant → local embeddings → keyword."""
+    q = await _qdrant_retrieve(query, k)
+    if q:
+        return q
     with _lock:
         rows = _db().execute("SELECT id, topic, text, embedding FROM kb").fetchall()
     qvec = await _embed(query)

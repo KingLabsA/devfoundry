@@ -346,6 +346,7 @@ fn main() {
         .manage(BackendProc(Mutex::new(None)))
         .manage(DevServers(Mutex::new(HashMap::new())))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, sc, event| {

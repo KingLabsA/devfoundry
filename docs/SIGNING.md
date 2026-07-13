@@ -38,11 +38,22 @@ Add a code-signing certificate and configure `tauri.conf.json` → `bundle.windo
 `npm run tauri build` produces an **ad-hoc signed** app — fine for your own machine, but other users
 see a Gatekeeper/SmartScreen warning. That's expected until the secrets above are set.
 
-## Updater (optional)
+## Auto-updater
 
-For auto-updates (`tauri-plugin-updater`), generate a signing keypair
-(`npm run tauri signer generate`) and add `TAURI_SIGNING_PRIVATE_KEY` +
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` as secrets.
+Auto-update is wired (`tauri-plugin-updater`): Settings → General → **Check for updates**.
+
+It's configured in `tauri.conf.json` → `plugins.updater` with a **public key** (already set) and an
+**endpoints** URL. To make updates actually flow:
+
+1. The updater signing **private key** lives at `~/.tauri/devfoundry-updater.key` (generated with
+   `npm run tauri signer generate`). Add it (and its password, if any) as repo secrets:
+   `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+2. Set the real `endpoints` URL in `tauri.conf.json` — replace `OWNER` with your GitHub org/user. The
+   release workflow (`createUpdaterArtifacts: true`) produces `latest.json` + signed bundles on each tag.
+3. Tag a release. Existing installs then see the update via **Check for updates**.
+
+> The public key is committed; the private key stays secret. Losing the private key means you can't
+> sign future updates — back it up.
 
 ---
 
