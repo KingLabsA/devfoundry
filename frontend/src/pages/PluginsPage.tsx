@@ -169,14 +169,18 @@ export function PluginsPage() {
           Servers marked 🔑 read their key from your <code>.env</code> (set it in Settings).</p>
         <div className="catalog-grid">
           {CATALOG.map((item) => {
-            const installed = (servers ?? []).some((s) => s.name === item.name);
+            const existing = (servers ?? []).find((s) => s.name === item.name);
+            // "stale" = installed but with a different command/args than the current catalog
+            const stale = existing && (existing.command !== item.command ||
+              (existing.args || []).join(" ") !== item.args.join(" "));
             return (
               <div className="catalog-card" key={item.name}>
                 <div className="catalog-name">{item.name} <span className="catalog-cat">{item.cat}</span></div>
                 <div className="catalog-desc">{item.desc}{item.needsEnv ? " 🔑" : ""}</div>
-                <button className="btn small primary" disabled={busy || installed}
+                <button className={stale ? "btn small" : "btn small primary"}
+                  disabled={busy || (!!existing && !stale)}
                   onClick={() => installFromCatalog(item)}>
-                  {installed ? "✓ installed" : `install (${item.command})`}
+                  {stale ? "⟳ repair" : existing ? "✓ installed" : `install (${item.command})`}
                 </button>
               </div>
             );

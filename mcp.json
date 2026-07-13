@@ -30,20 +30,21 @@
         "@modelcontextprotocol/server-sequential-thinking"
       ]
     },
-    "sqlite": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sqlite"
-      ]
-    },
     "everything": {
       "transport": "stdio",
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-everything"
+      ]
+    },
+    "sqlite": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-sqlite",
+        "--db-path",
+        "/tmp/mcp.db"
       ]
     }
   }
