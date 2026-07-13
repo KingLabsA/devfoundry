@@ -3,7 +3,7 @@ import { PipelineEvent } from "../api/client";
 import { Markdown } from "./Markdown";
 
 // Doc artifacts are markdown; the rest render as JSON/text.
-const DOC_ARTIFACTS = new Set(["prd", "architecture", "api_spec"]);
+const DOC_ARTIFACTS = new Set(["prd", "architecture", "api_spec", "design_brief"]);
 
 export function ArtifactPanel({ artifacts }: { artifacts: PipelineEvent[] }) {
   const [selected, setSelected] = useState(0);

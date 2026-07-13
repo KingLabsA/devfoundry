@@ -407,3 +407,8 @@ body {
 .catalog-cat { color: var(--muted); font-size: 10px; font-weight: 400; border: 1px solid var(--border);
   border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .chip-cat { color: var(--muted); font-size: 10px; opacity: 0.7; }
+
+/* ---- skill picker ---- */
+.skill-picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.skill-label { font-size: 12px; color: var(--muted); }
+.skill-chip.active { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }

@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api")
 @router.post("/runs", response_model=RunCreated, status_code=202)
 async def create_run(req: RunRequest) -> RunCreated:
     state = orchestrator.start_run(
-        req.idea.strip(), deploy_target=req.deploy_target, custom_domain=req.custom_domain)
+        req.idea.strip(), deploy_target=req.deploy_target,
+        custom_domain=req.custom_domain, skills=req.skills)
     log.info("Started run %s", state.run_id)
     return RunCreated(run_id=state.run_id)
 

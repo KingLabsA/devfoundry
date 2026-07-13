@@ -20,14 +20,28 @@ log = logging.getLogger(__name__)
 Progress = Callable[[str], Awaitable[None]]
 
 
-def _searxng_url() -> str:
-    return (env_value("SEARXNG_URL") or "http://localhost:8082").rstrip("/")
+def _searxng_urls() -> list[str]:
+    urls = []
+    if env_value("SEARXNG_URL"):
+        urls.append(env_value("SEARXNG_URL").rstrip("/"))
+    urls += ["http://localhost:8100", "http://localhost:8082"]  # bundled, then any existing
+    seen = set()
+    return [u for u in urls if not (u in seen or seen.add(u))]
 
 
 async def _searxng(client: httpx.AsyncClient, query: str, limit: int) -> list[dict]:
-    resp = await client.get(f"{_searxng_url()}/search", params={"q": query, "format": "json"})
-    resp.raise_for_status()
-    data = resp.json()
+    data = None
+    for base in _searxng_urls():
+        try:
+            resp = await client.get(f"{base}/search", params={"q": query, "format": "json"}, timeout=12)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("results"):
+                break
+        except (httpx.HTTPError, ValueError):
+            continue
+    if not data:
+        return []
     out = [{"title": it.get("title", ""), "url": it["url"], "snippet": (it.get("content") or "")[:400]}
            for it in data.get("results", [])[:limit] if it.get("url")]
     for ib in data.get("infoboxes", [])[:2]:

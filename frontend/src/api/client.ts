@@ -3,6 +3,7 @@ export const BASE = "http://localhost:9100";
 export interface DeployOptions {
   deploy_target?: string;
   custom_domain?: string;
+  skills?: string[];
 }
 
 export interface ProjectFile {

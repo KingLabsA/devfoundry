@@ -16,6 +16,7 @@ import { ModelsPage } from "./pages/ModelsPage";
 import { GatewayPage } from "./pages/GatewayPage";
 import { ResearchPage } from "./pages/ResearchPage";
 import { CommandPalette } from "./components/CommandPalette";
+import { SkillPicker } from "./components/SkillPicker";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -40,6 +41,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("forge");
   const [deployTarget, setDeployTarget] = useState("auto");
   const [deployDomain, setDeployDomain] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
 
   const artifacts = useMemo(() => events.filter((e) => e.kind === "artifact"), [events]);
   const deployUrl = useMemo(() => {
@@ -49,7 +51,7 @@ export default function App() {
   const hasProject = stage === "done" || stage === "failed" || tab === "code";
 
   const submit = (idea: string) =>
-    start(idea, { deploy_target: deployTarget, custom_domain: deployDomain });
+    start(idea, { deploy_target: deployTarget, custom_domain: deployDomain, skills });
 
   return (
     <div className="shell">
@@ -70,6 +72,7 @@ export default function App() {
         {page === "forge" && (
           <>
             <IdeaInput disabled={running} onSubmit={submit} running={running} onStop={stop} />
+            {!running && <SkillPicker selected={skills} onChange={setSkills} />}
             <DeployBar
               target={deployTarget} domain={deployDomain}
               onTarget={setDeployTarget} onDomain={setDeployDomain}

@@ -54,6 +54,30 @@ async def recommend(specs: Specs) -> dict:
     }
 
 
+@router.get("/skills")
+async def skills() -> list[dict]:
+    from app import skills as skills_mod
+    return skills_mod.catalog()
+
+
+@router.get("/knowledge")
+async def knowledge() -> list[dict]:
+    from app import knowledge as kb
+    return kb.list_entries()
+
+
+class KbEntry(BaseModel):
+    topic: str
+    text: str
+
+
+@router.post("/knowledge")
+async def add_knowledge(entry: KbEntry) -> dict:
+    from app import knowledge as kb
+    kb.add_entry(entry.topic, entry.text)
+    return {"added": True, "topic": entry.topic}
+
+
 @router.get("/router/providers")
 async def router_providers() -> dict:
     """All providers with connection + free/paid status, and a suggested rotation

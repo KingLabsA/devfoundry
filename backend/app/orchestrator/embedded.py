@@ -23,13 +23,17 @@ MAX_REFINE_ITERATIONS = 3
 # Delimited file format — robust across all models because file contents (quotes,
 # braces, backslashes) never need escaping, unlike a JSON blob.
 CODEGEN_SYSTEM = (
-    "You are an expert full-stack engineer. Generate a complete, runnable application.\n"
+    "You are a senior full-stack engineer and product designer at a top agency. Build a "
+    "COMPLETE, polished, production-ready application that a client would happily pay for. "
+    "Follow the provided design system and design brief exactly. Real content, no placeholders, "
+    "no 'lorem ipsum', no 'Feature 1'. Responsive, accessible, and visually refined.\n"
     "Output EACH file using this exact format, and nothing else:\n"
     "=== FILE: relative/path/name.ext ===\n"
     "<full file content>\n"
     "=== FILE: next/file.ext ===\n"
     "<full file content>\n"
-    "Include a package manifest, an entrypoint, a README, and at least one test. "
+    "Include a package manifest with working scripts, an entrypoint, all components, styling, "
+    "a README with run steps, and at least one test. "
     "Do NOT wrap files in JSON or markdown code fences. No commentary before or after."
 )
 
@@ -147,10 +151,39 @@ def _files_from_response(text: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in files.items()}
 
 
-async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path) -> list[str]:
+async def design_stage(run_id: str, idea: str, skills: list[str]) -> str:
+    """Produce a concrete design brief the codegen stage must follow (premium quality)."""
+    from app.skills import build_guidance
+
+    await _emit(run_id, Stage.SPEC, "Lead Designer: preparing the design brief...")
+    guidance = build_guidance(skills)
+    brief = await complete(
+        f"Product idea: {idea}\n\n{guidance}\n\n"
+        "Write a concrete DESIGN BRIEF for this product: pick a brand color + palette, a type "
+        "hierarchy, the page/section structure, key components, and the tone of the copy. "
+        "Be specific and opinionated — this is the blueprint the engineers will build to.",
+        "You are a world-class product designer producing agency-grade work.",
+        max_tokens=2000, role="spec")
+    await _emit(run_id, Stage.SPEC, "Produced design brief", kind="artifact", artifact="design_brief", content=brief)
+    return brief
+
+
+async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path,
+                        skills: list[str] | None = None) -> list[str]:
+    from app.knowledge import context_for
+    from app.skills import build_guidance
+
     await _emit(run_id, Stage.CODEGEN, "Generating full application codebase...")
-    prompt = (f"Build this application: {idea}\n\n## PRD\n{specs['prd'][:6000]}\n\n"
-              f"## Architecture\n{specs['architecture'][:4000]}\n\n## API Spec\n{specs['api_spec'][:4000]}")
+    skills = skills or []
+    guidance = build_guidance(skills)
+    knowledge = await context_for(idea)
+    design_brief = specs.get("design_brief", "")
+    prompt = (f"Build this application to a premium, production-ready standard: {idea}\n\n"
+              f"## Design brief\n{design_brief[:3000]}\n\n"
+              f"## PRD\n{specs['prd'][:4000]}\n\n"
+              f"## Architecture\n{specs['architecture'][:2500]}\n\n"
+              f"## API Spec\n{specs['api_spec'][:2500]}\n\n"
+              f"{guidance}\n\n{knowledge}")
     files: dict[str, str] = {}
     last_err = ""
     for attempt in range(2):
@@ -328,12 +361,15 @@ async def run_embedded_pipeline(state: RunState, set_stage, workspace: Path) -> 
     project_dir = workspace / "app"
     project_dir.mkdir(parents=True, exist_ok=True)
 
-    await set_stage(state, Stage.SPEC, "Generating specifications")
+    skills = state.artifacts.get("skills", [])
+
+    await set_stage(state, Stage.SPEC, "Generating specifications & design")
     specs = await spec_stage(run_id, state.idea)
+    specs["design_brief"] = await design_stage(run_id, state.idea, skills)
     state.artifacts["specs"] = specs
 
     await set_stage(state, Stage.CODEGEN, "Generating codebase")
-    files = await codegen_stage(run_id, state.idea, specs, project_dir)
+    files = await codegen_stage(run_id, state.idea, specs, project_dir, skills)
     state.artifacts["project_dir"] = str(project_dir)
 
     await set_stage(state, Stage.TASKS, "Planning tasks")

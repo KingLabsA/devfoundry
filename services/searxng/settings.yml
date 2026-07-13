@@ -1,0 +1,28 @@
+# DevFoundry bundled SearXNG — JSON API enabled for Deep Research.
+use_default_settings: true
+
+server:
+  secret_key: "devfoundry-searxng-change-me"
+  bind_address: "0.0.0.0"
+  port: 8080
+  limiter: false
+  image_proxy: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: github
+    disabled: false
+  - name: stackoverflow
+    disabled: false

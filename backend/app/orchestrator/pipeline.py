@@ -29,10 +29,13 @@ class Orchestrator:
         self.runs: dict[str, RunState] = {}
         self._tasks: dict[str, asyncio.Task] = {}
 
-    def start_run(self, idea: str, deploy_target: str = "", custom_domain: str = "") -> RunState:
+    def start_run(self, idea: str, deploy_target: str = "", custom_domain: str = "",
+                  skills: list[str] | None = None) -> RunState:
         state = RunState(idea=idea)
         if deploy_target or custom_domain:
             state.artifacts["deploy_config"] = {"target": deploy_target, "domain": custom_domain}
+        if skills:
+            state.artifacts["skills"] = skills
         self.runs[state.run_id] = state
         self._persist(state)
         self._tasks[state.run_id] = asyncio.create_task(self._execute(state))

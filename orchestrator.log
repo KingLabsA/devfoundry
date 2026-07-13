@@ -1,13 +1,8 @@
-INFO:     Started server process [72445]
+INFO:     Started server process [79938]
 INFO:     Waiting for application startup.
-2026-07-13 19:41:38,257 INFO [app.orchestrator.pipeline] loaded 8 past runs from history
+2026-07-13 22:39:35,415 INFO [app.orchestrator.pipeline] loaded 11 past runs from history
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:9100 (Press CTRL+C to quit)
-INFO:     127.0.0.1:52327 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52330 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52332 - "GET /api/router/providers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52334 - "POST /api/mcp/servers HTTP/1.1" 201 Created
-INFO:     127.0.0.1:52336 - "POST /api/mcp/servers HTTP/1.1" 201 Created
-INFO:     127.0.0.1:52375 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52344 - "GET /api/mcp/servers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52395 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50726 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50730 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50732 - "GET /api/skills HTTP/1.1" 200 OK

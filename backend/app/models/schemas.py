@@ -21,6 +21,7 @@ class RunRequest(BaseModel):
     idea: str = Field(..., min_length=10, max_length=4000)
     deploy_target: str = ""      # override DEPLOY_TARGET for this run
     custom_domain: str = ""      # e.g. myapp.surge.sh / netlify site name
+    skills: list[str] = Field(default_factory=list)  # design/capability skills
 
 
 class RunCreated(BaseModel):
