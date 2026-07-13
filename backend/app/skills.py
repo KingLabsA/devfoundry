@@ -23,6 +23,16 @@ DESIGN SYSTEM (follow precisely for a premium, modern result):
 - Polish: empty states, loading states, hover states, 404 handling where relevant.
 - Deliverables: package.json (vite scripts), index.html, src/main.tsx, App + components,
   tailwind config, a README with run steps, and at least one test.
+
+TESTS MUST ACTUALLY RUN AND PASS (critical):
+- Use Vitest in ONE-SHOT mode: package.json "test" script MUST be "vitest run" (never bare
+  "vitest", which hangs in watch mode).
+- Configure the test environment in vite.config.ts: add a `test: { environment: 'jsdom',
+  globals: true, setupFiles: './src/setupTests.ts' }` block, and include devDependencies:
+  vitest, jsdom, @testing-library/react, @testing-library/jest-dom.
+- Create src/setupTests.ts importing '@testing-library/jest-dom'.
+- Write simple, robust tests that assert on stable text/roles that truly exist in the output.
+- Prefer 1-3 focused passing tests over many brittle ones.
 """
 
 SKILLS: dict[str, dict] = {

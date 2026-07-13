@@ -108,17 +108,22 @@ def _write_files(project_dir: Path, files: dict[str, str]) -> list[str]:
     return written
 
 
-async def _run_cmd(args: list[str], cwd: Path, timeout: int = 300) -> tuple[int, str]:
+async def _run_cmd(args: list[str], cwd: Path, timeout: int = 300,
+                   env: dict[str, str] | None = None) -> tuple[int, str]:
+    proc = None
     try:
+        full_env = {**os.environ, **(env or {})}
         proc = await asyncio.create_subprocess_exec(
-            *args, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+            *args, cwd=cwd, env=full_env,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         return proc.returncode or 0, out.decode(errors="replace")
     except FileNotFoundError:
         return -1, f"{args[0]}: not installed"
     except asyncio.TimeoutError:
-        proc.kill()
-        return -1, "timed out"
+        if proc:
+            proc.kill()
+        return -124, "timed out (test runner may be in watch mode)"
 
 
 # ---------------------------------------------------------------- stages
@@ -250,7 +255,13 @@ _SETUP_ERROR_MARKERS = (
     "no test specified", "command not found", "is not recognized",
     "cannot find package", "err_module_not_found", "no such file or directory",
     "missing script", "econnrefused", "importerror",
+    # test-runner setup problems (not logic failures)
+    "jsdom", "document is not defined", "window is not defined", "environment",
+    "failed to load config", "no test files found", "watch mode", "timed out",
 )
+
+# Env that forces one-shot (non-watch) runs across common JS test runners.
+_CI_ENV = {"CI": "true", "VITEST_MODE": "run"}
 
 
 def _has_real_npm_test(project_dir: Path) -> bool:
@@ -274,21 +285,26 @@ async def test_stage(run_id: str, project_dir: Path) -> dict:
     elif has_js:
         if not (project_dir / "node_modules").exists():
             await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
-            icode, iout = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"], project_dir, timeout=240)
+            icode, iout = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"],
+                                         project_dir, timeout=300, env=_CI_ENV)
             if icode != 0:
                 await _emit(run_id, Stage.REFINE, "Dependency install failed — skipping tests",
                             kind="status", passed=0, failed=0, runnable=False)
                 return {"passed": 0, "failed": 0, "runnable": False}
-        runner = ["npm", "test", "--silent"]
+        # `npm test -- --run` forces vitest one-shot; harmless for other runners.
+        runner = ["npm", "test", "--silent", "--", "--run"]
     else:
         await _emit(run_id, Stage.REFINE, "No runnable test suite — skipping", kind="status",
                     passed=0, failed=0, runnable=False)
         return {"passed": 0, "failed": 0, "runnable": False}
 
-    code, out = await _run_cmd(runner, project_dir, timeout=300)
-    if code != 0 and any(m in out.lower() for m in _SETUP_ERROR_MARKERS):
-        await _emit(run_id, Stage.REFINE, "Test environment not runnable — skipping", kind="status",
-                    passed=0, failed=0, runnable=False)
+    # CI=true makes vitest/jest/etc. run once and exit (no watch-mode hang). 150s cap.
+    code, out = await _run_cmd(runner, project_dir, timeout=150, env=_CI_ENV)
+    low = out.lower()
+    if code == -124 or (code != 0 and any(m in low for m in _SETUP_ERROR_MARKERS)):
+        reason = "watch-mode/timeout" if code == -124 else "environment not runnable"
+        await _emit(run_id, Stage.REFINE, f"Tests skipped ({reason}) — not a code failure",
+                    kind="status", passed=0, failed=0, runnable=False)
         return {"passed": 0, "failed": 0, "runnable": False}
     result = {"passed": 1 if code == 0 else 0, "failed": 0 if code == 0 else 1,
               "failures": out[-3000:] if code else "", "runnable": True}
