@@ -16,6 +16,26 @@ interface McpServer {
 interface McpTool { name: string; description?: string }
 interface Provider { id: string; label: string; free: boolean; configured: boolean }
 
+// Curated, ready-to-install MCP servers (official + popular). One-click add.
+const CATALOG: { name: string; desc: string; command: string; args: string[] }[] = [
+  { name: "filesystem", desc: "Read/write files in an allowed directory", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"] },
+  { name: "fetch", desc: "Fetch and convert web pages to markdown", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-fetch"] },
+  { name: "memory", desc: "Persistent knowledge-graph memory", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-memory"] },
+  { name: "git", desc: "Inspect and operate on git repositories", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-git"] },
+  { name: "sequential-thinking", desc: "Structured step-by-step reasoning", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"] },
+  { name: "time", desc: "Time and timezone conversions", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-time"] },
+  { name: "sqlite", desc: "Query a local SQLite database", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sqlite"] },
+  { name: "everything", desc: "Reference server exercising all MCP features", command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-everything"] },
+];
+
 export function PluginsPage() {
   const [servers, setServers] = useState<McpServer[] | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -66,6 +86,23 @@ export function PluginsPage() {
     await refresh();
   };
 
+  const installFromCatalog = async (item: typeof CATALOG[number]) => {
+    setBusy(true);
+    try {
+      const resp = await fetch(`${BASE}/api/mcp/servers`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: item.name, transport: "stdio", command: item.command, args: item.args }),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setMessage(`Installed ${item.name}`);
+      await refresh();
+    } catch (err) {
+      setMessage(`Install failed: ${err}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const showTools = async (name: string) => {
     try {
       const resp = await fetch(`${BASE}/api/mcp/servers/${encodeURIComponent(name)}/tools`);
@@ -88,7 +125,27 @@ export function PluginsPage() {
       {message && <div className="notice">{message}</div>}
 
       <section className="settings-group">
-        <h3>Add MCP server</h3>
+        <h3>Plugin catalog — one-click install</h3>
+        <p className="hint">Popular Model Context Protocol servers, ready to install. Requires <code>npx</code> (Node).</p>
+        <div className="catalog-grid">
+          {CATALOG.map((item) => {
+            const installed = (servers ?? []).some((s) => s.name === item.name);
+            return (
+              <div className="catalog-card" key={item.name}>
+                <div className="catalog-name">{item.name}</div>
+                <div className="catalog-desc">{item.desc}</div>
+                <button className="btn small primary" disabled={busy || installed}
+                  onClick={() => installFromCatalog(item)}>
+                  {installed ? "✓ installed" : "install"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="settings-group">
+        <h3>Add custom MCP server</h3>
         <p className="hint">Connect any Model Context Protocol server — stdio command (e.g. <code>npx -y @modelcontextprotocol/server-filesystem /path</code>) or HTTP endpoint.</p>
         <div className="field-row">
           <input placeholder="name" value={form.name} style={{ maxWidth: 160 }}

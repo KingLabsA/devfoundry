@@ -1,45 +1,59 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { BASE } from "../api/client";
+import { IS_TAURI, openUrlWindow } from "../api/native";
 
 const GATEWAY_URL = "http://localhost:3002";
 
-/** Embeds the FreeLLMAPI dashboard (self-hosted gateway on :3002) inside the app. */
+/** FreeLLMAPI dashboard. The dashboard sets X-Frame-Options: SAMEORIGIN so it
+ *  can't be iframed — we open it in a native child window instead. */
 export function GatewayPage() {
-  const [up, setUp] = useState<boolean | null>(null);
-  const [nonce, setNonce] = useState(0);
+  const [status, setStatus] = useState<{ up: boolean; status: number } | null>(null);
+
+  const check = useCallback(async () => {
+    try {
+      const resp = await fetch(`${BASE}/api/gateway/status`);
+      setStatus(await resp.json());
+    } catch {
+      setStatus({ up: false, status: 0 });
+    }
+  }, []);
 
   useEffect(() => {
-    let alive = true;
-    const check = async () => {
-      try {
-        // no-cors: we only care that the server answers, not the body
-        await fetch(GATEWAY_URL, { mode: "no-cors", signal: AbortSignal.timeout(3000) });
-        if (alive) setUp(true);
-      } catch {
-        if (alive) setUp(false);
-      }
-    };
     check();
-  }, [nonce]);
+    const id = setInterval(check, 8000);
+    return () => clearInterval(id);
+  }, [check]);
+
+  const openWindow = () => openUrlWindow(GATEWAY_URL, "freellmapi-dashboard", "FreeLLMAPI Dashboard");
 
   return (
-    <div className="page" style={{ gap: 10 }}>
+    <div className="page">
       <div className="page-head">
-        <h2>Gateway — FreeLLMAPI Dashboard</h2>
-        <div className="page-actions">
-          <a className="btn" href={GATEWAY_URL} target="_blank" rel="noreferrer">Open in browser ↗</a>
-          <button className="btn" onClick={() => setNonce((n) => n + 1)}>↻ Reload</button>
-        </div>
+        <h2>Gateway — FreeLLMAPI</h2>
+        <div className="page-actions"><button className="btn" onClick={check}>↻ Check</button></div>
       </div>
-      {up === false && (
-        <div className="error">
-          FreeLLMAPI gateway isn't responding at <code>{GATEWAY_URL}</code>. Start it (Docker: the
-          <code> freellmapi</code> container), then Reload. The dashboard is where you add provider keys
-          and see the model catalog.
+
+      <div className={`gateway-status ${status?.up ? "up" : "down"}`}>
+        <span className={`dot ${status?.up ? "up" : "down"}`} />
+        {status === null ? "checking…"
+          : status.up ? <>Gateway is <strong>online</strong> at <code>{GATEWAY_URL}</code> (HTTP {status.status})</>
+          : <>Gateway is <strong>offline</strong> — start the <code>freellmapi</code> Docker container.</>}
+      </div>
+
+      <div className="gateway-card">
+        <p className="hint">
+          The FreeLLMAPI dashboard blocks embedding for security (<code>X-Frame-Options: SAMEORIGIN</code>),
+          so it opens in its own window. That's where you add provider keys, browse the 60+ model catalog,
+          and view usage.
+        </p>
+        <div className="gateway-actions">
+          {IS_TAURI && (
+            <button className="btn primary" onClick={openWindow} disabled={!status?.up}>
+              🖥 Open dashboard in app window
+            </button>
+          )}
+          <a className="btn" href={GATEWAY_URL} target="_blank" rel="noreferrer">Open in browser ↗</a>
         </div>
-      )}
-      <div className="gateway-frame">
-        <iframe key={nonce} title="FreeLLMAPI" src={GATEWAY_URL}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
       </div>
     </div>
   );

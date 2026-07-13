@@ -12,6 +12,9 @@ export function setProjectDir(dir: string) {
   localStorage.setItem("devfoundry.projectDir", dir);
 }
 
+export const openUrlWindow = (url: string, label: string, title: string) =>
+  invoke<void>("open_url_window", { url, label, title });
+
 export const dockerAvailable = () => invoke<boolean>("docker_available");
 export const dockerRunning = () => invoke<boolean>("docker_running");
 export const startDockerDesktop = () => invoke<void>("start_docker_desktop");

@@ -134,6 +134,23 @@ fn docker_running() -> bool {
 }
 
 #[tauri::command]
+fn open_url_window(app: tauri::AppHandle, url: String, label: String, title: String) -> Result<(), String> {
+    // Open an external URL in a native child webview — bypasses X-Frame-Options
+    // (used for the FreeLLMAPI dashboard and deployed-app previews).
+    if let Some(w) = app.get_webview_window(&label) {
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let parsed = url.parse().map_err(|e| format!("bad url: {e}"))?;
+    tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::External(parsed))
+        .title(title)
+        .inner_size(1200.0, 820.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn start_docker_desktop() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -222,6 +239,7 @@ fn main() {
             stop_backend,
             docker_available,
             docker_running,
+            open_url_window,
             start_docker_desktop,
             stack_status,
             start_stack,

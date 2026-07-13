@@ -14,6 +14,8 @@ import { RunsPage } from "./pages/RunsPage";
 import { PluginsPage } from "./pages/PluginsPage";
 import { ModelsPage } from "./pages/ModelsPage";
 import { GatewayPage } from "./pages/GatewayPage";
+import { ResearchPage } from "./pages/ResearchPage";
+import { CommandPalette } from "./components/CommandPalette";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -97,12 +99,14 @@ export default function App() {
             </div>
           </>
         )}
+        {page === "research" && <ResearchPage />}
         {page === "runs" && <RunsPage />}
         {page === "models" && <ModelsPage />}
         {page === "plugins" && <PluginsPage />}
         {page === "gateway" && <GatewayPage />}
         {page === "services" && <ServicesPage health={health} />}
         {page === "settings" && <SettingsPage />}
+        <CommandPalette onNavigate={setPage} />
 
         <footer className="statusbar">
           <span className={`status-pill ${stage}`}>{STAGE_LABELS[stage] ?? stage}</span>
