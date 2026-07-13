@@ -15,6 +15,13 @@ export function setProjectDir(dir: string) {
 export const openUrlWindow = (url: string, label: string, title: string) =>
   invoke<void>("open_url_window", { url, label, title });
 
+export const startDevServer = (project_dir: string) => invoke<number>("start_dev_server", { projectDir: project_dir });
+export const stopDevServer = (project_dir: string) => invoke<void>("stop_dev_server", { projectDir: project_dir });
+
+export const keychainSet = (key: string, value: string) => invoke<void>("keychain_set", { key, value });
+export const keychainGet = (key: string) => invoke<string>("keychain_get", { key });
+export const keychainDelete = (key: string) => invoke<void>("keychain_delete", { key });
+
 export interface Specs { ram_gb: number; cpu_cores: number; arch: string; chip: string; gpu: string }
 export const systemSpecs = () => invoke<Record<string, string>>("system_specs").then((s) => ({
   ram_gb: Number(s.ram_gb || 0), cpu_cores: Number(s.cpu_cores || 0),

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { IS_TAURI } from "./api/native";
 import { IdeaInput } from "./components/IdeaInput";
 import { PipelineTimeline } from "./components/PipelineTimeline";
 import { LogViewer } from "./components/LogViewer";
@@ -50,6 +51,43 @@ export default function App() {
     return (dep?.payload.url as string) || undefined;
   }, [artifacts]);
   const hasProject = stage === "done" || stage === "failed" || tab === "code";
+  const projectDir = useMemo(() => {
+    const pd = [...events].reverse().find((e) => e.payload.project_dir);
+    return (pd?.payload.project_dir as string) || undefined;
+  }, [events]);
+  const lastStage = useRef("");
+
+  // Native menu/tray navigation events (from Rust).
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    let unlisten: Array<() => void> = [];
+    (async () => {
+      const { listen } = await import("@tauri-apps/api/event");
+      unlisten.push(await listen<string>("navigate", (e) => setPage(e.payload as Page)));
+      unlisten.push(await listen("global-forge", () => setPage("forge")));
+      unlisten.push(await listen("open-docs", () => setPage("settings")));
+    })();
+    return () => { unlisten.forEach((u) => u()); };
+  }, []);
+
+  // Native completion notification.
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    if ((stage === "done" || stage === "failed") && lastStage.current !== stage && lastStage.current !== "") {
+      (async () => {
+        const n = await import("@tauri-apps/plugin-notification");
+        let granted = await n.isPermissionGranted();
+        if (!granted) granted = (await n.requestPermission()) === "granted";
+        if (granted) {
+          n.sendNotification({
+            title: stage === "done" ? "✓ Build complete" : "✕ Build failed",
+            body: stage === "done" ? "Your app is ready in DevFoundry." : (error || "The pipeline failed."),
+          });
+        }
+      })();
+    }
+    lastStage.current = stage;
+  }, [stage, error]);
 
   const submit = (idea: string) =>
     start(idea, { deploy_target: deployTarget, custom_domain: deployDomain, skills });
@@ -99,7 +137,7 @@ export default function App() {
               {tab === "logs" && <LogViewer events={events} />}
               {tab === "artifacts" && <ArtifactPanel artifacts={artifacts} />}
               {tab === "code" && (runId ? <CodeEditor runId={runId} /> : <div className="empty-state">Forge an idea to browse and edit its code.</div>)}
-              {tab === "canvas" && (runId ? <CanvasPreview runId={runId} deployUrl={deployUrl} /> : <div className="empty-state">Forge an idea to preview the app.</div>)}
+              {tab === "canvas" && (runId ? <CanvasPreview runId={runId} projectDir={projectDir} deployUrl={deployUrl} /> : <div className="empty-state">Forge an idea to preview the app.</div>)}
             </div>
           </>
         )}

@@ -57,4 +57,34 @@ def env_value(key: str, default: str = "") -> str:
     if file_val:
         return file_val
     import os
-    return os.environ.get(key, default)
+    env_val = os.environ.get(key, "")
+    if env_val:
+        return env_val
+    # macOS Keychain fallback for secrets (kept out of plaintext .env).
+    if key.endswith(("_KEY", "_TOKEN")) or key in ("HF_TOKEN", "GITHUB_TOKEN"):
+        kc = _keychain_get(key)
+        if kc:
+            return kc
+    return default
+
+
+_KEYCHAIN_SERVICE = "com.devfoundry.app"
+_keychain_cache: dict[str, str] = {}
+
+
+def _keychain_get(key: str) -> str:
+    import platform
+    if platform.system() != "Darwin":
+        return ""
+    if key in _keychain_cache:
+        return _keychain_cache[key]
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["security", "find-generic-password", "-a", key, "-s", _KEYCHAIN_SERVICE, "-w"],
+            capture_output=True, text=True, timeout=3)
+        val = out.stdout.strip() if out.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        val = ""
+    _keychain_cache[key] = val
+    return val

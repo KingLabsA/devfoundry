@@ -1,7 +1,9 @@
-INFO:     Started server process [57342]
+INFO:     Started server process [60231]
 INFO:     Waiting for application startup.
-2026-07-14 02:29:49,808 INFO [app.orchestrator.pipeline] loaded 15 past runs from history
+2026-07-14 02:56:36,913 INFO [app.orchestrator.pipeline] loaded 16 past runs from history
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:9100 (Press CTRL+C to quit)
-INFO:     127.0.0.1:50030 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50035 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50836 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50838 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50843 - "GET /api/health HTTP/1.1" 200 OK

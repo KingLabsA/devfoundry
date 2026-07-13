@@ -142,3 +142,41 @@ async def context_for(idea: str) -> str:
         return ""
     return "RELEVANT BEST-PRACTICES (apply these):\n" + "\n".join(
         f"- [{e['topic']}] {e['text']}" for e in entries)
+
+
+# ---- per-project RAG over the generated code -------------------------------
+_IGNORE_PARTS = {"node_modules", "__pycache__", ".git", "dist", "build", ".next"}
+
+
+async def retrieve_project_files(project_dir, query: str, k: int = 8, max_file_chars: int = 5000) -> dict[str, str]:
+    """Return the k files most relevant to `query` (e.g. a build error), by embedding
+    similarity when available, else by keyword overlap. Lets the fixer focus on the
+    right files instead of the whole tree on large projects."""
+    from pathlib import Path
+
+    root = Path(project_dir)
+    candidates: list[tuple[str, str]] = []
+    for p in sorted(root.rglob("*")):
+        if p.is_dir() or any(part in _IGNORE_PARTS or part.startswith(".") for part in p.relative_to(root).parts):
+            continue
+        try:
+            content = p.read_text()[:max_file_chars]
+        except (UnicodeDecodeError, OSError):
+            continue
+        candidates.append((str(p.relative_to(root)), content))
+
+    if len(candidates) <= k:
+        return dict(candidates)
+
+    qvec = await _embed(query)
+    scored: list[tuple[float, str, str]] = []
+    if qvec:
+        for rel, content in candidates:
+            vec = await _embed(f"{rel}\n{content[:1500]}")
+            scored.append((_cosine(qvec, vec) if vec else 0.0, rel, content))
+    if not scored or all(s[0] == 0 for s in scored):
+        terms = set(re.findall(r"[a-zA-Z_]{3,}", query.lower()))
+        scored = [(sum(1 for t in terms if t in (rel + content).lower()), rel, content)
+                  for rel, content in candidates]
+    scored.sort(key=lambda s: s[0], reverse=True)
+    return {rel: content for _, rel, content in scored[:k]}

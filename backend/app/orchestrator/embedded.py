@@ -207,7 +207,7 @@ async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path,
         raise ValueError(f"codegen produced no parseable files: {last_err}")
     written = _write_files(project_dir, files)
     await _emit(run_id, Stage.CODEGEN, f"Generated {len(written)} files", kind="artifact",
-                artifact="codebase_manifest", files=sorted(written))
+                artifact="codebase_manifest", files=sorted(written), project_dir=str(project_dir))
     return written
 
 
@@ -277,9 +277,19 @@ def _pkg(project_dir: Path) -> dict:
 
 
 async def _apply_fix(run_id: str, project_dir: Path, problem: str, errors: str) -> list[str]:
-    """Ask the model to fix a concrete build/test error and write the changed files."""
+    """Ask the model to fix a concrete build/test error and write the changed files.
+    On large projects, use per-project RAG to send only the most relevant files."""
+    from app.knowledge import retrieve_project_files
+
+    all_files = _snapshot(project_dir, 200000)
+    if len(all_files) > 12:
+        # focus on the files most relevant to the error
+        relevant = await retrieve_project_files(project_dir, f"{problem}\n{errors}", k=10)
+        context = json.dumps(relevant) if relevant else json.dumps(_snapshot(project_dir, 90000))
+    else:
+        context = json.dumps(_snapshot(project_dir, 90000))
     text = await complete(
-        f"Project files:\n{json.dumps(_snapshot(project_dir, 90000))}\n\n"
+        f"Project files:\n{context}\n\n"
         f"{problem}:\n{errors[:6000]}\n\n"
         "Return ONLY the files you changed to fix this, using the '=== FILE: path ===' format "
         "(raw contents, no JSON, no code fences). Fix the actual cause; keep the app working.",

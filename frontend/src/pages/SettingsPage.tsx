@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IS_TAURI, getProjectDir, mergeEnv, parseEnv, readEnv, saveEnv, setProjectDir } from "../api/native";
+import { IS_TAURI, getProjectDir, keychainSet, mergeEnv, parseEnv, readEnv, saveEnv, setProjectDir } from "../api/native";
 import { BASE } from "../api/client";
 import { THEMES, applyTheme, currentTheme } from "../themes";
 
@@ -101,6 +101,22 @@ export function SettingsPage() {
   };
 
   const pickTheme = (id: string) => { applyTheme(id); setTheme(id); };
+
+  const moveSecretsToKeychain = async () => {
+    const text = await readEnv();
+    const vals = parseEnv(text);
+    const secretKeys = Object.keys(vals).filter(
+      (k) => vals[k] && (k.endsWith("_KEY") || k.endsWith("_TOKEN")));
+    if (secretKeys.length === 0) { setMessage("No secrets in .env to move."); return; }
+    let moved = 0;
+    const blanked: Record<string, string> = {};
+    for (const k of secretKeys) {
+      try { await keychainSet(k, vals[k]); blanked[k] = ""; moved++; } catch { /* skip */ }
+    }
+    await saveEnv(mergeEnv(text, blanked)); // blank them in .env; backend reads Keychain as fallback
+    setMessage(`Moved ${moved} secret(s) to the macOS Keychain and cleared them from .env.`);
+    await load();
+  };
 
   const secret = (key: string, label: string, hint = "…") => (
     <label className="field" key={key}>
@@ -257,6 +273,15 @@ export function SettingsPage() {
               </table>
             )}
           </section>
+          <section className="settings-group">
+            <h3>Security — macOS Keychain</h3>
+            <p className="hint">Move API keys out of the plaintext <code>.env</code> into the macOS Keychain.
+              The backend reads them from the Keychain automatically.</p>
+            <button className="btn primary" style={{ alignSelf: "flex-start" }} onClick={moveSecretsToKeychain}>
+              🔒 Move secrets to Keychain
+            </button>
+          </section>
+
           <section className="settings-group">
             <h3>Raw .env</h3>
             <p className="hint">Full environment file — advanced edits. Save from the button above.</p>

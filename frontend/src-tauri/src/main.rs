@@ -6,7 +6,7 @@ use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 const DEFAULT_PROJECT_DIR: &str = "/Users/jahblesslion/Documents/devfoundry";
 
@@ -234,10 +234,129 @@ fn save_env(dir: String, content: String) -> Result<(), String> {
     fs::write(Path::new(&dir).join(".env"), content).map_err(|e| e.to_string())
 }
 
+// ---- Live dev server for Canvas preview -----------------------------------
+struct DevServers(Mutex<HashMap<String, Child>>);
+
+fn free_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .ok()
+        .and_then(|l| l.local_addr().ok())
+        .map(|a| a.port())
+        .unwrap_or(5199)
+}
+
+#[tauri::command]
+fn start_dev_server(project_dir: String, state: tauri::State<DevServers>) -> Result<u16, String> {
+    let dir = Path::new(&project_dir);
+    if !dir.join("package.json").exists() {
+        return Err("no package.json — this project has no dev server".into());
+    }
+    let mut servers = state.0.lock().unwrap();
+    if servers.contains_key(&project_dir) {
+        return Err("dev server already running for this project".into());
+    }
+    let port = free_port();
+    // Vite/Next honor --port; pass through both common conventions.
+    let child = Command::new("npm")
+        .args(["run", "dev", "--", "--port", &port.to_string(), "--host", "127.0.0.1"])
+        .current_dir(dir)
+        .env("PORT", port.to_string())
+        .env("BROWSER", "none")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("failed to start dev server: {e}"))?;
+    servers.insert(project_dir, child);
+    Ok(port)
+}
+
+#[tauri::command]
+fn stop_dev_server(project_dir: String, state: tauri::State<DevServers>) -> Result<(), String> {
+    if let Some(mut child) = state.0.lock().unwrap().remove(&project_dir) {
+        let _ = child.kill();
+    }
+    Ok(())
+}
+
+// ---- Keychain-backed secrets (macOS `security`) ---------------------------
+const KEYCHAIN_SERVICE: &str = "com.devfoundry.app";
+
+#[tauri::command]
+fn keychain_set(key: String, value: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = Command::new("security")
+            .args(["add-generic-password", "-U", "-a", &key, "-s", KEYCHAIN_SERVICE, "-w", &value])
+            .output()
+            .map_err(|e| e.to_string())?;
+        if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).into()) }
+    }
+    #[cfg(not(target_os = "macos"))]
+    { Err("keychain only implemented on macOS".into()) }
+}
+
+#[tauri::command]
+fn keychain_get(key: String) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = Command::new("security")
+            .args(["find-generic-password", "-a", &key, "-s", KEYCHAIN_SERVICE, "-w"])
+            .output()
+            .map_err(|e| e.to_string())?;
+        if out.status.success() {
+            Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+        } else {
+            Ok(String::new()) // not found → empty
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    { Ok(String::new()) }
+}
+
+#[tauri::command]
+fn keychain_delete(key: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("security")
+            .args(["delete-generic-password", "-a", &key, "-s", KEYCHAIN_SERVICE])
+            .output();
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    { Ok(()) }
+}
+
+fn show_main(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
 fn main() {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+    use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+    use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
+
+    // Global hotkey: ⌘⇧A (Ctrl⇧A on Win/Linux) → show & focus the app.
+    let toggle_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyA);
+
     tauri::Builder::default()
         .manage(BackendProc(Mutex::new(None)))
-        .setup(|app| {
+        .manage(DevServers(Mutex::new(HashMap::new())))
+        .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, sc, event| {
+                    if event.state == ShortcutState::Pressed && sc == &toggle_shortcut {
+                        show_main(app);
+                        let _ = app.emit("global-forge", ());
+                    }
+                })
+                .build(),
+        )
+        .setup(move |app| {
             // Auto-start the embedded orchestrator so the app is self-contained.
             let state = app.state::<BackendProc>();
             if backend_port_open() {
@@ -251,13 +370,97 @@ fn main() {
                     Err(e) => autostart_log(&format!("autostart failed: {e}")),
                 }
             }
+
+            // Register the global shortcut.
+            use tauri_plugin_global_shortcut::GlobalShortcutExt;
+            let _ = app.global_shortcut().register(toggle_shortcut);
+
+            // ---- Native application menu ----
+            let handle = app.handle();
+            let forge = MenuItem::with_id(handle, "nav:forge", "New Forge", true, Some("CmdOrCtrl+N"))?;
+            let research = MenuItem::with_id(handle, "nav:research", "Deep Research", true, Some("CmdOrCtrl+R"))?;
+            let history = MenuItem::with_id(handle, "nav:runs", "History", true, Some("CmdOrCtrl+Y"))?;
+            let models = MenuItem::with_id(handle, "nav:models", "Models", true, Some("CmdOrCtrl+M"))?;
+            let settings = MenuItem::with_id(handle, "nav:settings", "Settings", true, Some("CmdOrCtrl+,"))?;
+            let palette = MenuItem::with_id(handle, "cmd:palette", "Command Palette", true, Some("CmdOrCtrl+K"))?;
+            let docs = MenuItem::with_id(handle, "help:docs", "Documentation", true, None::<&str>)?;
+
+            let app_menu = Submenu::with_items(handle, "DevFoundry", true, &[
+                &PredefinedMenuItem::about(handle, Some("About DevFoundry"), None)?,
+                &PredefinedMenuItem::separator(handle)?,
+                &settings,
+                &PredefinedMenuItem::separator(handle)?,
+                &PredefinedMenuItem::hide(handle, None)?,
+                &PredefinedMenuItem::quit(handle, None)?,
+            ])?;
+            let file_menu = Submenu::with_items(handle, "File", true, &[
+                &forge, &research, &PredefinedMenuItem::separator(handle)?, &history,
+            ])?;
+            let edit_menu = Submenu::with_items(handle, "Edit", true, &[
+                &PredefinedMenuItem::undo(handle, None)?,
+                &PredefinedMenuItem::redo(handle, None)?,
+                &PredefinedMenuItem::separator(handle)?,
+                &PredefinedMenuItem::cut(handle, None)?,
+                &PredefinedMenuItem::copy(handle, None)?,
+                &PredefinedMenuItem::paste(handle, None)?,
+                &PredefinedMenuItem::select_all(handle, None)?,
+            ])?;
+            let go_menu = Submenu::with_items(handle, "Go", true, &[
+                &forge, &research, &history, &models, &PredefinedMenuItem::separator(handle)?, &palette,
+            ])?;
+            let window_menu = Submenu::with_items(handle, "Window", true, &[
+                &PredefinedMenuItem::minimize(handle, None)?,
+                &PredefinedMenuItem::maximize(handle, None)?,
+                &PredefinedMenuItem::fullscreen(handle, None)?,
+            ])?;
+            let help_menu = Submenu::with_items(handle, "Help", true, &[&docs])?;
+            let menu = Menu::with_items(handle, &[&app_menu, &file_menu, &edit_menu, &go_menu, &window_menu, &help_menu])?;
+            app.set_menu(menu)?;
+            app.on_menu_event(|app, event| {
+                let id = event.id().0.as_str();
+                if let Some(page) = id.strip_prefix("nav:") {
+                    show_main(app);
+                    let _ = app.emit("navigate", page.to_string());
+                } else if id == "cmd:palette" {
+                    show_main(app);
+                    let _ = app.emit("open-palette", ());
+                } else if id == "help:docs" {
+                    let _ = app.emit("open-docs", ());
+                }
+            });
+
+            // ---- System tray ----
+            let tray_forge = MenuItem::with_id(handle, "tray:forge", "New Forge", true, None::<&str>)?;
+            let tray_show = MenuItem::with_id(handle, "tray:show", "Show DevFoundry", true, None::<&str>)?;
+            let tray_quit = MenuItem::with_id(handle, "tray:quit", "Quit", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(handle, &[&tray_show, &tray_forge, &PredefinedMenuItem::separator(handle)?, &tray_quit])?;
+            let _tray = TrayIconBuilder::with_id("main-tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("DevFoundry")
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| match event.id().0.as_str() {
+                    "tray:show" => show_main(app),
+                    "tray:forge" => { show_main(app); let _ = app.emit("navigate", "forge".to_string()); }
+                    "tray:quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { .. } = event {
+                        show_main(tray.app_handle());
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                let state = window.state::<BackendProc>();
-                let taken = state.0.lock().unwrap().take();
-                if let Some(mut child) = taken {
+                let bstate = window.state::<BackendProc>();
+                if let Some(mut child) = bstate.0.lock().unwrap().take() {
+                    let _ = child.kill();
+                }
+                let dstate = window.state::<DevServers>();
+                for (_, mut child) in dstate.0.lock().unwrap().drain() {
                     let _ = child.kill();
                 }
             }
@@ -275,7 +478,12 @@ fn main() {
             stop_stack,
             service_logs,
             read_env,
-            save_env
+            save_env,
+            start_dev_server,
+            stop_dev_server,
+            keychain_set,
+            keychain_get,
+            keychain_delete
         ])
         .run(tauri::generate_context!())
         .expect("error while running DevFoundry");
