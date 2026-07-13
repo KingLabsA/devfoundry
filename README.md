@@ -1,47 +1,55 @@
+<div align="center">
+
 # ⬢ DevFoundry
 
-**Type an app idea. Get specs, code, tests, and a deployed app — while you watch.**
+**Type an app idea. Get a designed, coded, tested, and deployed application — while you watch.**
 
-DevFoundry is a native desktop app (macOS, Tauri) that runs an autonomous software
-factory on your own machine. It chains five AI development stages into one pipeline
-and streams every document, diff, test result, and deploy log live into the UI.
+A local-first, native desktop app that runs an autonomous software factory on your own machine.
+Bring your own models (24 providers, or fully local), watch every step stream live, and deploy free.
 
-| Stage  | Engine      | Output                                      |
-|--------|-------------|---------------------------------------------|
-| Spec   | MetaGPT     | PRD, architecture, API specs                |
-| Code   | Bolt.diy    | Full application codebase                   |
-| Tasks  | Orc         | Feature breakdown + AI-developer assignment |
-| Refine | OpenCode    | Implemented tasks, bug fixes, passing tests |
-| Deploy | Superpowers | Packaged container, running app             |
+[Features](docs/FEATURES.md) · [Tutorial](docs/TUTORIAL.md) · [Architecture](docs/ARCHITECTURE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Demo scripts](docs/DEMO.md) · [Roadmap](docs/ROADMAP.md)
 
-## Why DevFoundry
+</div>
 
-- **Local-first.** Your ideas, keys, and generated code never leave your machine.
-- **Bring your own models.** Anthropic, OpenAI, OpenRouter, Groq, Google — or any
-  OpenAI-compatible gateway (self-hosted proxies work).
-- **Transparent.** Every stage streams its artifacts live; nothing is a black box.
-- **Native.** Real desktop app (8 MB), integrated Docker control, no browser tabs.
+---
+
+## What it does
+
+Describe an app in plain language. DevFoundry runs a multi-stage pipeline and streams the whole thing to the UI:
+
+| Stage      | What happens                                                        |
+|------------|--------------------------------------------------------------------|
+| **Spec**   | PRD, system architecture, and API spec — plus a **design brief** from a "Lead Designer" |
+| **Codebase** | A complete, production-grade app (React + Vite + TypeScript + Tailwind) following a house design system |
+| **Tasks**  | Feature breakdown assigned to AI developer agents                  |
+| **Refine** | Each task implemented; tests installed and run; fixes iterated     |
+| **Deploy** | Packaged and deployed (free targets or local)                      |
+
+Every run — docs, code, diffs, test output, deploy logs — is **saved to SQLite** and browsable in History.
+
+## Why it's different
+
+- **Local-first.** Ideas, API keys, and generated code never leave your machine.
+- **Runs inside the app.** The orchestrator auto-starts on launch. **No Docker required** for the default embedded mode — Docker is optional ("isolated mode") for containerized engines/deploys.
+- **Bring your own models — 24 providers.** Anthropic, OpenAI, OpenRouter, Groq, Google, Mistral, Cerebras, Together, DeepSeek, Fireworks, HF, xAI, Perplexity, Moonshot, Zhipu, Qwen, NVIDIA, SambaNova, GitHub Models, **OpenCode Zen** (keyless free), **FreeLLMAPI**, **Ollama** & **LM Studio** (local), and any custom gateway.
+- **Zero-config.** Nothing set up? It **auto-detects** a running local runtime (FreeLLMAPI → Ollama → LM Studio) and just works.
+- **Smart routing.** MoE stage experts (a different model per stage), automatic **rotation/failover** on rate limits, and a one-click auto-router built from every free provider you have.
+- **Premium output.** A skills system + house design system + RAG knowledge base push generated apps to agency quality — real content, responsive, accessible, Tailwind.
+- **Free deployment, built in.** Netlify, Hugging Face Spaces, Vercel, Cloudflare Pages, Surge — plus local Docker/zip. Custom domains supported.
 
 ## Platforms
 
-DevFoundry is a **native desktop app** (not a mobile or web app), built with Tauri.
-The same codebase ships to all three desktop OSes; tagging a release builds them in CI
-([.github/workflows/release.yml](.github/workflows/release.yml)):
+Native **desktop** app (Tauri) — not mobile or web. Same codebase ships to all three desktop OSes via CI ([.github/workflows/release.yml](.github/workflows/release.yml)):
 
 | OS | Bundles | Status |
 |----|---------|--------|
 | macOS (Apple Silicon + Intel) | `.app`, `.dmg` | built locally + CI |
-| Windows | `.msi`, `.exe` | CI (tag a release) |
-| Linux | `.deb`, `.AppImage` | CI (tag a release) |
-
-Mobile (iOS/Android) is not shipped — the pipeline spawns a local Python orchestrator
-and manages Docker, which needs a desktop OS.
+| Windows | `.msi`, `.exe` | CI |
+| Linux | `.deb`, `.AppImage` | CI |
 
 ## Install
 
-Download `DevFoundry_x.y.z_aarch64.dmg` from Releases, drag to Applications.
-
-Or build from source:
+Download the latest `.dmg` / `.msi` / `.AppImage` from Releases. Or build from source:
 
 ```bash
 git clone <repo-url> devfoundry && cd devfoundry
@@ -49,68 +57,41 @@ cd frontend && npm install && npm run tauri build
 # bundles land in frontend/src-tauri/target/release/bundle/
 ```
 
-**Requirements:** macOS (Apple Silicon), Docker Desktop (for the full pipeline),
-Node 20+, Rust (only if building from source).
+**Requirements:** a desktop OS; Node 20+ and Rust (to build from source); Python 3.11+ (the app spawns the orchestrator — a `.venv` under `backend/` is used if present). Docker and API keys are **optional**.
 
-## Quick start
+## Quick start (60 seconds)
 
-1. Open DevFoundry → **Settings** → paste at least one LLM provider key → Save.
-2. Click **▶ Start services** in the header. If Docker Desktop isn't running,
-   DevFoundry launches it, waits for the daemon, and brings the stack up.
-   The first start builds five Docker images — give it several minutes.
-3. Go to **Forge**, type your idea (`⌘↵` to submit), and watch the timeline light up.
+1. Launch DevFoundry — the orchestrator auto-starts (header dots go green).
+2. **Models** page → click **Use** on a provider (or just rely on auto-detect if you run Ollama/FreeLLMAPI).
+3. **Forge** page → pick **Skills** (e.g. *Premium landing page*) → type an idea → **Forge It**.
+4. Watch the pipeline stream. Browse the result in the **Code** and **Canvas** tabs; find it later in **History**.
 
-## Try it in 60 seconds (demo mode — no Docker, no keys)
+Full walkthrough: [docs/TUTORIAL.md](docs/TUTORIAL.md).
 
-```bash
-cd backend
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-DEVFOUNDRY_MOCK=1 .venv/bin/uvicorn app.main:app --port 9100
-```
+## The app at a glance
 
-Open the DevFoundry app, forge any idea, and a fully scripted pipeline run streams
-through every stage — perfect for demos and screenshots. See
-[docs/TUTORIAL.md](docs/TUTORIAL.md) for the full walkthrough.
+| Page | What it's for |
+|------|---------------|
+| **Forge** | Describe an idea, pick skills + deploy target, watch the pipeline; Code editor & Canvas preview |
+| **Research** | Deep Research — multi-step web research → cited report (markdown, exportable) |
+| **History** | Every past build, persisted; replay its event log |
+| **Models** | 24 providers, fetch/activate models, MoE routing, rotation, **your-machine local-LLM picker**, auto-router |
+| **Plugins** | One-click MCP server catalog (17 servers) + custom servers + deploy providers |
+| **Gateway** | The FreeLLMAPI dashboard, in a native window |
+| **Services** | Optional Docker "isolated mode" lifecycle |
+| **Settings** | Tabbed: General, Providers, Deployment, Research, Appearance (themes), Advanced (presets, raw .env) |
 
-## Architecture
-
-```
-┌────────────────────── DevFoundry.app (Tauri 2 + React) ──────────────────────┐
-│  Forge · Runs · Services (Docker control) · Settings (providers, endpoints)  │
-└──────────────┬────────────────────────────────────────────────┬──────────────┘
-               │ REST + WebSocket (localhost:9100)              │ Rust commands
-┌──────────────▼──────────────┐                    ┌────────────▼─────────────┐
-│  FastAPI orchestrator       │                    │  docker compose up/down  │
-│  pipeline + event bus       │                    │  .env read/write         │
-└─┬──────┬──────┬──────┬──────┘                    └──────────────────────────┘
-  ▼      ▼      ▼      ▼      ▼
-MetaGPT Bolt.diy Orc OpenCode Superpowers      (isolated Docker sidecars :9101-:9105)
-```
-
-Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| "Cannot connect to the Docker daemon" | Docker Desktop isn't running. Click **Start services** — DevFoundry now launches it for you and waits. |
-| Stack starts but health dots stay red | First build still in progress — check per-service **logs** on the Services page. |
-| "ANTHROPIC_API_KEY not set" in Orc logs | Add the key in **Settings**, save, then Stop All → Start All. |
-| Want to try the UI without any setup | Run the backend in demo mode (`DEVFOUNDRY_MOCK=1`, see above). |
-
-## Project status & roadmap
-
-Working today: the desktop app, orchestrator, live streaming, Docker lifecycle
-management, settings, demo mode, and the MetaGPT/OpenCode adapters. The Bolt.diy
-headless adapter and parts of the deploy flow are still maturing — the honest
-gap-by-gap assessment lives in [docs/ROADMAP.md](docs/ROADMAP.md).
+Press **⌘K** anywhere for the command palette (navigate + switch theme).
 
 ## Docs
 
-- [Tutorial — first run, demo mode, real pipeline](docs/TUTORIAL.md)
-- [Architecture deep-dive](docs/ARCHITECTURE.md)
-- [Roadmap & gap analysis](docs/ROADMAP.md)
-- [Launch checklist](docs/LAUNCH.md)
+- **[Features](docs/FEATURES.md)** — every capability, in detail
+- **[Tutorial](docs/TUTORIAL.md)** — first run, local models, real deploy, dev mode
+- **[Architecture](docs/ARCHITECTURE.md)** — how the pieces fit
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** — common issues & fixes
+- **[Demo scripts](docs/DEMO.md)** — social-media walkthroughs & storyboards
+- **[Roadmap](docs/ROADMAP.md)** — what's next
+- **[Contributing](CONTRIBUTING.md)** · **[Changelog](CHANGELOG.md)**
 
 ## License
 
