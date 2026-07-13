@@ -1,24 +1,27 @@
-INFO:     Started server process [30000]
+INFO:     Started server process [54505]
 INFO:     Waiting for application startup.
-2026-07-13 18:52:25,885 INFO [app.orchestrator.pipeline] loaded 4 past runs from history
+2026-07-13 19:22:54,365 INFO [app.orchestrator.pipeline] loaded 6 past runs from history
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:9100 (Press CTRL+C to quit)
-INFO:     127.0.0.1:63168 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63173 - "GET /api/health HTTP/1.1" 200 OK
-2026-07-13 18:52:36,224 INFO [httpx] HTTP Request: GET http://localhost:3002 "HTTP/1.1 200 OK"
-INFO:     127.0.0.1:63175 - "GET /api/gateway/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63179 - "GET /api/presets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63181 - "WebSocket /api/research/ws" [accepted]
-INFO:     connection open
-2026-07-13 18:52:36,469 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 200 OK"
-2026-07-13 18:52:36,470 INFO [app.llm] auto-detected local LLM: freellmapi -> auto
-2026-07-13 18:52:37,068 INFO [httpx] HTTP Request: POST http://localhost:3002/v1/chat/completions "HTTP/1.1 200 OK"
-2026-07-13 18:52:39,120 INFO [httpx] HTTP Request: GET http://localhost:8082/search?q=What+is+Tauri+framework+and+its+core+features%3F&format=json "HTTP/1.1 200 OK"
-2026-07-13 18:52:39,823 INFO [httpx] HTTP Request: GET https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=What+is+Tauri+framework+and+its+core+features%3F&format=json&srlimit=5 "HTTP/1.1 200 OK"
-2026-07-13 18:52:40,136 INFO [httpx] HTTP Request: GET http://localhost:8082/search?q=Why+choose+Tauri+for+building+desktop+applications%3F&format=json "HTTP/1.1 200 OK"
-2026-07-13 18:52:40,875 INFO [httpx] HTTP Request: GET https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=Why+choose+Tauri+for+building+desktop+applications%3F&format=json&srlimit=5 "HTTP/1.1 200 OK"
-2026-07-13 18:52:42,776 INFO [httpx] HTTP Request: GET https://r.jina.ai/https://en.wikipedia.org/wiki/Informal_fallacy "HTTP/1.1 200 OK"
-2026-07-13 18:52:44,768 INFO [httpx] HTTP Request: GET https://r.jina.ai/https://en.wikipedia.org/wiki/List_of_free_and_open-source_software_packages "HTTP/1.1 200 OK"
-INFO:     127.0.0.1:63216 - "GET /api/health HTTP/1.1" 200 OK
-2026-07-13 18:52:46,253 INFO [httpx] HTTP Request: POST http://localhost:3002/v1/chat/completions "HTTP/1.1 200 OK"
-INFO:     127.0.0.1:63233 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50187 - "GET /api/deploy/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50188 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50204 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50206 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50206 - "GET /api/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50223 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50223 - "GET /api/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50223 - "GET /api/llm/providers HTTP/1.1" 200 OK
+2026-07-13 19:23:20,185 INFO [httpx] HTTP Request: GET http://localhost:3002/v1/models "HTTP/1.1 200 OK"
+2026-07-13 19:23:20,186 INFO [app.llm] auto-detected local LLM: freellmapi -> auto
+INFO:     127.0.0.1:50235 - "GET /api/llm/routing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50249 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50249 - "GET /api/mcp/servers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50250 - "GET /api/deploy/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50252 - "POST /api/runs/04f4428586374d79831016d444f95269/redeploy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50254 - "GET /api/runs/04f4428586374d79831016d444f95269/file?path=app/package.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50256 - "GET /api/runs/04f4428586374d79831016d444f95269/file?path=app/pages/index.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50269 - "OPTIONS /api/mcp/servers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50269 - "POST /api/mcp/servers HTTP/1.1" 201 Created
+INFO:     127.0.0.1:50270 - "GET /api/deploy/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50269 - "GET /api/mcp/servers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50270 - "GET /api/health HTTP/1.1" 200 OK

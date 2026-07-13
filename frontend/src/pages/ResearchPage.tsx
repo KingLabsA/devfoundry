@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { BASE } from "../api/client";
+import { Markdown } from "../components/Markdown";
 
 interface Source { n?: number; title: string; url: string }
 interface Result { report: string; sources: Source[]; queries: string[] }
@@ -31,10 +32,26 @@ export function ResearchPage() {
 
   const copyReport = () => result && navigator.clipboard.writeText(result.report);
 
+  const downloadReport = () => {
+    if (!result) return;
+    const md = `# ${question}\n\n${result.report}\n`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `research-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   return (
     <div className="page">
       <div className="page-head"><h2>Deep Research</h2>
-        {result && <div className="page-actions"><button className="btn small" onClick={copyReport}>Copy report</button></div>}
+        {result && (
+          <div className="page-actions">
+            <button className="btn small" onClick={copyReport}>Copy</button>
+            <button className="btn small" onClick={downloadReport}>Download .md</button>
+          </div>
+        )}
       </div>
       <p className="hint">Multi-step web research → cited report. Uses a keyless search chain
         (SearXNG → Wikipedia; add a free Brave/Tavily key in Settings for full web search) and the active LLM.</p>
@@ -66,7 +83,7 @@ export function ResearchPage() {
 
       {result && (
         <div className="research-report">
-          <div className="report-body">{result.report}</div>
+          <div className="report-body"><Markdown>{result.report}</Markdown></div>
           {result.sources.length > 0 && (
             <div className="report-sources">
               <h4>Sources</h4>
