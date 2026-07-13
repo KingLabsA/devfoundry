@@ -412,3 +412,11 @@ body {
 .skill-picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .skill-label { font-size: 12px; color: var(--muted); }
 .skill-chip.active { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+
+/* ---- verification badge ---- */
+.verify-badge { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+  padding: 3px 12px; font-size: 12px; border: 1px solid var(--border); }
+.verify-badge.done { border-color: var(--ok); color: var(--ok); }
+.verify-badge.spec { border-color: var(--accent); color: var(--accent); }
+.verify-badge.failed { border-color: var(--fail); color: var(--fail); }
+.verify-detail { color: var(--muted); font-size: 11px; font-family: ui-monospace, Menlo, monospace; }

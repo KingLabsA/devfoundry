@@ -263,6 +263,116 @@ _SETUP_ERROR_MARKERS = (
 # Env that forces one-shot (non-watch) runs across common JS test runners.
 _CI_ENV = {"CI": "true", "VITEST_MODE": "run"}
 
+MAX_BUILD_FIX_ITERATIONS = 3
+
+
+def _pkg(project_dir: Path) -> dict:
+    pkg = project_dir / "package.json"
+    if not pkg.exists():
+        return {}
+    try:
+        return json.loads(pkg.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+async def _apply_fix(run_id: str, project_dir: Path, problem: str, errors: str) -> list[str]:
+    """Ask the model to fix a concrete build/test error and write the changed files."""
+    text = await complete(
+        f"Project files:\n{json.dumps(_snapshot(project_dir, 90000))}\n\n"
+        f"{problem}:\n{errors[:6000]}\n\n"
+        "Return ONLY the files you changed to fix this, using the '=== FILE: path ===' format "
+        "(raw contents, no JSON, no code fences). Fix the actual cause; keep the app working.",
+        "You are a senior engineer fixing a real build/test error. Be precise and minimal.",
+        max_tokens=12000, role="refine")
+    try:
+        files = _files_from_response(text)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    files = {p: c for p, c in files.items() if p.lower() not in ("summary", "notes", "explanation")}
+    return _write_files(project_dir, files)
+
+
+async def build_verify_stage(run_id: str, project_dir: Path) -> dict:
+    """Really install, build, and test the generated app — iterating on real errors.
+
+    Returns a verification record: {installed, builds, tests_pass, runnable, iterations}.
+    """
+    pkg = _pkg(project_dir)
+    scripts = pkg.get("scripts", {})
+    is_node = bool(pkg)
+    is_python = bool(list(project_dir.rglob("requirements.txt")) or list(project_dir.rglob("pyproject.toml")))
+    verdict = {"installed": None, "builds": None, "tests_pass": None, "runnable": True, "iterations": 0}
+
+    if not is_node and not is_python:
+        await _emit(run_id, Stage.REFINE, "No build system detected — skipping verification",
+                    kind="status", **verdict, runnable=False)
+        verdict["runnable"] = False
+        return verdict
+
+    # 1. install
+    if is_node and not (project_dir / "node_modules").exists():
+        await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
+        code, out = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"], project_dir, timeout=300, env=_CI_ENV)
+        verdict["installed"] = code == 0
+        if code != 0:
+            await _emit(run_id, Stage.REFINE, "Dependency install failed — verification limited",
+                        kind="status", **verdict)
+            return verdict
+    elif is_python:
+        req = project_dir / "requirements.txt"
+        if req.exists():
+            await _emit(run_id, Stage.REFINE, "Installing Python dependencies...")
+            code, _ = await _run_cmd(["python3", "-m", "pip", "install", "-q", "-r", str(req)], project_dir, timeout=300)
+            verdict["installed"] = code == 0
+
+    # 2. build (compile / typecheck) — iterate on real errors
+    build_cmd = None
+    if is_node and "build" in scripts:
+        build_cmd = ["npm", "run", "build"]
+    if build_cmd:
+        for i in range(MAX_BUILD_FIX_ITERATIONS):
+            await _emit(run_id, Stage.REFINE, f"Building the app ({' '.join(build_cmd)})...")
+            code, out = await _run_cmd(build_cmd, project_dir, timeout=240, env=_CI_ENV)
+            verdict["builds"] = code == 0
+            verdict["iterations"] = i
+            if code == 0:
+                await _emit(run_id, Stage.REFINE, "✓ Build succeeded", kind="status", **verdict)
+                break
+            await _emit(run_id, Stage.REFINE, f"Build failed — fixing (iteration {i + 1})", kind="log")
+            changed = await _apply_fix(run_id, project_dir, "The build failed with these errors", out)
+            if not changed:
+                await _emit(run_id, Stage.REFINE, "Could not auto-fix the build error", kind="log")
+                break
+        else:
+            await _emit(run_id, Stage.REFINE, "Build still failing after fixes", kind="status", **verdict)
+
+    # 3. tests — one-shot, iterate on genuine failures
+    test_result = await test_stage(run_id, project_dir)
+    if not test_result.get("runnable"):
+        verdict["tests_pass"] = None
+    else:
+        verdict["tests_pass"] = test_result.get("failed", 1) == 0
+        for i in range(MAX_BUILD_FIX_ITERATIONS):
+            if verdict["tests_pass"]:
+                break
+            changed = await _apply_fix(run_id, project_dir, "These tests failed", test_result.get("failures", ""))
+            if not changed:
+                break
+            test_result = await test_stage(run_id, project_dir)
+            if not test_result.get("runnable"):
+                break
+            verdict["tests_pass"] = test_result.get("failed", 1) == 0
+
+    status = ("verified" if verdict["builds"] and verdict.get("tests_pass") in (True, None)
+              else "built" if verdict["builds"]
+              else "unverified")
+    await _emit(run_id, Stage.REFINE,
+                f"Verification: {status} (installed={verdict['installed']}, builds={verdict['builds']}, "
+                f"tests={verdict['tests_pass']})",
+                kind="artifact", artifact="verification", status=status, **verdict)
+    return {**verdict, "status": status}
+
 
 def _has_real_npm_test(project_dir: Path) -> bool:
     pkg = project_dir / "package.json"
@@ -395,14 +505,9 @@ async def run_embedded_pipeline(state: RunState, set_stage, workspace: Path) -> 
     await set_stage(state, Stage.REFINE, "Refining code")
     for task in tasks:
         await refine_task(run_id, project_dir, task["title"], task["description"] or task["title"])
-    for i in range(MAX_REFINE_ITERATIONS):
-        results = await test_stage(run_id, project_dir)
-        # Only iterate on genuine, runnable test failures — never loop on a
-        # non-runnable environment (missing deps, no test script, etc.).
-        if not results.get("runnable") or results.get("failed", 0) == 0:
-            break
-        await refine_task(run_id, project_dir, f"Fix failing tests (iteration {i+1})",
-                          f"Fix these test failures:\n{results.get('failures', '')}")
+
+    # Real build-verify: install → build (fix real errors) → test (fix real failures).
+    state.artifacts["verification"] = await build_verify_stage(run_id, project_dir)
 
     await set_stage(state, Stage.DEPLOY, "Packaging & deploying")
     state.artifacts["deployment"] = await deploy_stage(

@@ -17,6 +17,7 @@ import { GatewayPage } from "./pages/GatewayPage";
 import { ResearchPage } from "./pages/ResearchPage";
 import { CommandPalette } from "./components/CommandPalette";
 import { SkillPicker } from "./components/SkillPicker";
+import { VerificationBadge } from "./components/VerificationBadge";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -115,6 +116,7 @@ export default function App() {
           <span className={`status-pill ${stage}`}>{STAGE_LABELS[stage] ?? stage}</span>
           {running && <span className="spinner" aria-label="working" />}
           {running && <button className="btn small stop-btn" onClick={stop}>■ Stop</button>}
+          {page === "forge" && <VerificationBadge events={events} />}
           <span className="statusbar-right">{hasProject && runId ? `run ${runId.slice(0, 8)}` : "DevFoundry v0.1.0"}</span>
         </footer>
       </div>
