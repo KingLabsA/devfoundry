@@ -22,6 +22,21 @@ and streams every document, diff, test result, and deploy log live into the UI.
 - **Transparent.** Every stage streams its artifacts live; nothing is a black box.
 - **Native.** Real desktop app (8 MB), integrated Docker control, no browser tabs.
 
+## Platforms
+
+DevFoundry is a **native desktop app** (not a mobile or web app), built with Tauri.
+The same codebase ships to all three desktop OSes; tagging a release builds them in CI
+([.github/workflows/release.yml](.github/workflows/release.yml)):
+
+| OS | Bundles | Status |
+|----|---------|--------|
+| macOS (Apple Silicon + Intel) | `.app`, `.dmg` | built locally + CI |
+| Windows | `.msi`, `.exe` | CI (tag a release) |
+| Linux | `.deb`, `.AppImage` | CI (tag a release) |
+
+Mobile (iOS/Android) is not shipped — the pipeline spawns a local Python orchestrator
+and manages Docker, which needs a desktop OS.
+
 ## Install
 
 Download `DevFoundry_x.y.z_aarch64.dmg` from Releases, drag to Applications.

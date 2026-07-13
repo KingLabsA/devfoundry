@@ -34,8 +34,32 @@ class Orchestrator:
         if deploy_target or custom_domain:
             state.artifacts["deploy_config"] = {"target": deploy_target, "domain": custom_domain}
         self.runs[state.run_id] = state
+        self._persist(state)
         self._tasks[state.run_id] = asyncio.create_task(self._execute(state))
         return state
+
+    @staticmethod
+    def _persist(state: RunState) -> None:
+        try:
+            from app import store
+            store.save_run(state)
+        except Exception:  # noqa: BLE001 — never let persistence break a run
+            log.exception("failed to persist run %s", state.run_id)
+
+    def load_history(self) -> None:
+        """Rehydrate past runs from SQLite so they appear after a restart."""
+        try:
+            from app import store
+            from app.models.schemas import Stage as _Stage
+            for row in store.list_runs():
+                if row["run_id"] in self.runs:
+                    continue
+                self.runs[row["run_id"]] = RunState(
+                    run_id=row["run_id"], idea=row["idea"],
+                    stage=_Stage(row["stage"]), artifacts=row["artifacts"], error=row["error"])
+            log.info("loaded %d past runs from history", len(self.runs))
+        except Exception:  # noqa: BLE001
+            log.exception("failed to load run history")
 
     async def stop_run(self, run_id: str) -> bool:
         task = self._tasks.get(run_id)
@@ -46,6 +70,7 @@ class Orchestrator:
 
     async def _set_stage(self, state: RunState, stage: Stage, message: str) -> None:
         state.stage = stage
+        self._persist(state)
         await bus.publish(PipelineEvent(run_id=state.run_id, stage=stage, kind="status", message=message))
 
     async def _execute(self, state: RunState) -> None:

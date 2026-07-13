@@ -22,3 +22,9 @@ app.include_router(project_router)
 app.include_router(llm_router)
 app.include_router(mcp_router)
 app.include_router(ws_router)
+
+
+@app.on_event("startup")
+async def _load_history() -> None:
+    from app.orchestrator.pipeline import orchestrator
+    orchestrator.load_history()

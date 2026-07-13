@@ -17,9 +17,31 @@ async def create_run(req: RunRequest) -> RunCreated:
     return RunCreated(run_id=state.run_id)
 
 
-@router.get("/runs", response_model=list[RunState])
-async def list_runs() -> list[RunState]:
-    return list(orchestrator.runs.values())
+@router.get("/runs")
+async def list_runs() -> list[dict]:
+    from app import store
+    persisted = {r["run_id"]: r for r in store.list_runs()}
+    # overlay in-memory (fresher) state
+    for rid, state in orchestrator.runs.items():
+        persisted[rid] = {"run_id": rid, "idea": state.idea, "stage": state.stage.value,
+                          "error": state.error, "artifacts": state.artifacts,
+                          "created_at": persisted.get(rid, {}).get("created_at", ""),
+                          "updated_at": persisted.get(rid, {}).get("updated_at", "")}
+    return sorted(persisted.values(), key=lambda r: r.get("created_at", ""), reverse=True)
+
+
+@router.get("/runs/{run_id}/events")
+async def run_events(run_id: str) -> list[dict]:
+    from app import store
+    return store.get_events(run_id)
+
+
+@router.delete("/runs/{run_id}")
+async def delete_run(run_id: str) -> dict:
+    from app import store
+    orchestrator.runs.pop(run_id, None)
+    removed = store.delete_run(run_id)
+    return {"run_id": run_id, "deleted": removed}
 
 
 @router.post("/runs/{run_id}/stop")

@@ -318,3 +318,7 @@ body {
   color: var(--text); border-radius: 8px; padding: 7px 11px; font: inherit; font-size: 13px; outline: none; user-select: text; }
 .model-filter:focus { border-color: var(--accent); }
 .chip-rec { border-color: var(--accent); color: var(--accent); }
+
+/* ---- gateway (embedded FreeLLMAPI dashboard) ---- */
+.gateway-frame { flex: 1; min-height: 0; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.gateway-frame iframe { width: 100%; height: 100%; border: 0; }

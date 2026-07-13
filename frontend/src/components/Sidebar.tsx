@@ -1,10 +1,11 @@
-export type Page = "forge" | "runs" | "models" | "plugins" | "services" | "settings";
+export type Page = "forge" | "runs" | "models" | "plugins" | "gateway" | "services" | "settings";
 
 const ITEMS: { id: Page; icon: string; label: string }[] = [
   { id: "forge", icon: "⚒", label: "Forge" },
-  { id: "runs", icon: "🗂", label: "Runs" },
+  { id: "runs", icon: "🗂", label: "History" },
   { id: "models", icon: "🧠", label: "Models" },
   { id: "plugins", icon: "🧩", label: "Plugins" },
+  { id: "gateway", icon: "🌐", label: "Gateway" },
   { id: "services", icon: "🐳", label: "Services" },
   { id: "settings", icon: "⚙", label: "Settings" },
 ];

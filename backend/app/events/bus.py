@@ -19,6 +19,12 @@ class EventBus:
         async with self._lock:
             self._history[event.run_id].append(event)
             queues = list(self._subscribers[event.run_id])
+        # persist for history (off the event loop; sqlite is sync)
+        try:
+            from app import store
+            await asyncio.to_thread(store.save_event, event)
+        except Exception:  # noqa: BLE001 — persistence must never break streaming
+            log.exception("failed to persist event for run %s", event.run_id)
         for q in queues:
             try:
                 q.put_nowait(event)
