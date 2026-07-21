@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevFoundry — the local-first AI software factory</title>
+  <meta name="description" content="Type an app idea. Get a designed, coded, tested, and deployed application — while you watch. Local-first, 24 model providers or fully offline, free deploys. Open source." />
+  <meta property="og:title" content="DevFoundry — the local-first AI software factory" />
+  <meta property="og:description" content="Idea in → designed, coded, tested, deployed app out. On your machine, with your models. Open source." />
+  <meta property="og:image" content="assets/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="assets/og-card.png" />
+  <style>
+    :root {
+      --bg:#0c0f14; --panel:#141922; --panel-2:#1a2030; --border:#262e3f;
+      --text:#e8edf5; --muted:#8b96a8; --accent:#f0883e; --accent-soft:rgba(240,136,62,.14);
+      --ok:#3fb950;
+    }
+    * { box-sizing:border-box; margin:0; }
+    html { scroll-behavior:smooth; }
+    body { background:var(--bg); color:var(--text); font:16px/1.6 -apple-system,"SF Pro Text","Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:var(--accent); text-decoration:none; }
+    .wrap { max-width:1060px; margin:0 auto; padding:0 24px; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:20px 0; position:sticky; top:0; background:rgba(12,15,20,.85); backdrop-filter:blur(8px); z-index:10; border-bottom:1px solid var(--border); }
+    .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+    .logo .mark { color:var(--accent); background:var(--accent-soft); border-radius:10px; width:36px; height:36px; display:grid; place-items:center; font-size:20px; }
+    nav a { color:var(--muted); margin-left:20px; font-size:14px; }
+    nav a:hover { color:var(--text); }
+
+    .hero { text-align:center; padding:76px 0 40px; }
+    .badge { display:inline-block; border:1px solid var(--border); color:var(--muted); border-radius:999px; padding:4px 14px; font-size:13px; margin-bottom:22px; }
+    .hero h1 { font-size:clamp(34px,5.4vw,58px); line-height:1.1; letter-spacing:-1px; }
+    .hero h1 em { color:var(--accent); font-style:normal; }
+    .hero p { color:var(--muted); max-width:660px; margin:20px auto 0; font-size:18px; }
+    .cta { margin-top:32px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn { display:inline-block; border-radius:12px; padding:13px 26px; font-weight:700; font-size:15px; }
+    .btn.primary { background:var(--accent); color:#1c0f02; }
+    .btn.ghost { border:1px solid var(--border); color:var(--text); }
+    .btn:hover { filter:brightness(1.1); }
+    .sub { margin-top:14px; color:var(--muted); font-size:13px; }
+
+    .pipeline { display:flex; align-items:stretch; justify-content:center; gap:8px; flex-wrap:wrap; padding:30px 0 10px; }
+    .stage { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 16px; text-align:left; min-width:150px; }
+    .stage b { display:block; font-size:14px; } .stage span { color:var(--muted); font-size:12px; }
+    .arrow { color:var(--border); align-self:center; font-size:18px; }
+
+    section { padding:52px 0; border-top:1px solid var(--border); }
+    h2 { font-size:28px; letter-spacing:-.5px; margin-bottom:8px; text-align:center; }
+    .lead { color:var(--muted); text-align:center; max-width:640px; margin:0 auto 28px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px; }
+    .card .ico { font-size:22px; } .card h3 { font-size:16px; margin:10px 0 6px; } .card p { color:var(--muted); font-size:14px; }
+
+    .demo { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:24px; }
+    .demo pre { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px 18px; overflow:auto; font-size:13px; line-height:1.7; }
+    .comment { color:var(--muted); } .ok { color:var(--ok); }
+
+    .stats { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+    .stat { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px 26px; text-align:center; min-width:150px; }
+    .stat b { display:block; font-size:30px; color:var(--accent); } .stat span { color:var(--muted); font-size:13px; }
+
+    .docs-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+    .doc { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+    .doc h4 { margin:0 0 4px; font-size:15px; } .doc p { color:var(--muted); font-size:13px; margin:0; }
+
+    footer { border-top:1px solid var(--border); padding:28px 0 44px; color:var(--muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .shot-frame { border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--panel); box-shadow:0 24px 80px rgba(0,0,0,.45); }
+    .shot-frame img { display:block; width:100%; height:auto; }
+    .shots { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .shots figcaption { color:var(--muted); font-size:13px; padding:10px 4px 0; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo"><span class="mark">⬢</span> DevFoundry</div>
+      <nav>
+        <a href="#how">How</a><a href="#why">Why</a><a href="#models">Models</a>
+        <a href="#start">Get started</a><a href="docs.html">Docs</a><a href="https://github.com/KingLabsA/devfoundry">GitHub</a>
+      </nav>
+    </header>
+
+    <div class="hero">
+      <span class="badge">Local-first · Open source · Native desktop</span>
+      <h1>Type an idea.<br />Watch it become a <em>deployed app</em>.</h1>
+      <p>DevFoundry runs an autonomous software factory on your own machine — it designs, codes, tests,
+        and deploys a real application while you watch, using your models (or fully offline).</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/KingLabsA/devfoundry/releases/latest">Download for desktop</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+      <div class="sub">macOS · Windows · Linux · Desktop, CLI &amp; Web · No Docker required · Free deploys</div>
+      <div class="shot-frame" style="margin-top:40px">
+        <video src="assets/screen-demo.mp4" autoplay loop muted playsinline poster="assets/og-card.png" style="display:block;width:100%;height:auto"></video>
+      </div>
+    </div>
+
+    <div class="pipeline" id="how">
+      <div class="stage"><b>📋 Spec + Design</b><span>PRD, architecture, design brief</span></div>
+      <span class="arrow">→</span>
+      <div class="stage"><b>⚡ Codebase</b><span>React + Tailwind, real content</span></div>
+      <span class="arrow">→</span>
+      <div class="stage"><b>🗂 Tasks</b><span>assigned to AI devs</span></div>
+      <span class="arrow">→</span>
+      <div class="stage"><b>🔧 Refine</b><span>implement + test</span></div>
+      <span class="arrow">→</span>
+      <div class="stage"><b>🚀 Deploy</b><span>free hosting or local</span></div>
+    </div>
+
+    <section id="why">
+      <h2>Why DevFoundry</h2>
+      <p class="lead">Cloud AI builders lock you in and take your code. DevFoundry keeps everything on your machine.</p>
+      <div class="grid">
+        <div class="card"><div class="ico">🔒</div><h3>Local-first, actually</h3><p>Your ideas, API keys, and every line of generated code stay on your laptop. No cloud, no telemetry.</p></div>
+        <div class="card"><div class="ico">🧠</div><h3>Bring your own models</h3><p>24 providers — Anthropic, OpenAI, Groq, Google, plus keyless OpenCode Zen and fully-local Ollama / LM Studio.</p></div>
+        <div class="card"><div class="ico">⚡</div><h3>Zero-config</h3><p>Nothing set up? It auto-detects a running local runtime and just works. Smart rotation & failover across providers.</p></div>
+        <div class="card"><div class="ico">🎨</div><h3>Agency-grade output</h3><p>A skills system, house design system, and RAG knowledge base push generated apps to sellable quality.</p></div>
+        <div class="card"><div class="ico">🚀</div><h3>Free deploys, built in</h3><p>Netlify, Vercel, Cloudflare Pages, Surge, Hugging Face Spaces — with custom domains — or local Docker/zip.</p></div>
+        <div class="card"><div class="ico">🔬</div><h3>More than a builder</h3><p>Deep Research (cited reports), an MCP plugin catalog, a code editor, live preview, and persistent history.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="stats">
+        <div class="stat"><b>24</b><span>LLM providers</span></div>
+        <div class="stat"><b>17</b><span>MCP plugins</span></div>
+        <div class="stat"><b>7</b><span>deploy targets</span></div>
+        <div class="stat"><b>$0</b><span>to run locally</span></div>
+      </div>
+    </section>
+
+    <section id="models">
+      <h2>Your models, your machine</h2>
+      <p class="lead">Cloud or fully local — and it recommends the best local model for your hardware.</p>
+      <div class="grid">
+        <div class="card"><div class="ico">🖥️</div><h3>Best local model for your specs</h3><p>Detects your RAM, chip, and GPU (Metal) and recommends a model that fits — with the exact <code>ollama pull</code> command.</p></div>
+        <div class="card"><div class="ico">🔀</div><h3>MoE + auto-router</h3><p>A different expert model per pipeline stage, automatic failover on rate limits, and a one-click rotation built from every free provider you have.</p></div>
+        <div class="card"><div class="ico">🧩</div><h3>Any gateway</h3><p>OpenAI-compatible? It works — including self-hosted proxies like FreeLLMAPI.</p></div>
+      </div>
+    </section>
+
+    <section id="screens">
+      <h2>Inside the app</h2>
+      <p class="lead">Real screenshots — nothing mocked.</p>
+      <div class="shots">
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-forge.png" alt="Forge page: idea input, skills, five-stage pipeline" loading="lazy" /></div><figcaption>Forge — idea in, pipeline streams live</figcaption></figure>
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-models.png" alt="Models page: 24 providers, auto-router, best local models for your machine" loading="lazy" /></div><figcaption>Models — 24 providers, auto-router, your-machine picker</figcaption></figure>
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-history.png" alt="History page: every build persisted" loading="lazy" /></div><figcaption>History — every build persisted, replayable</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="start">
+      <h2>Get started</h2>
+      <div class="demo">
+        <pre><span class="comment"># 1. Install the desktop app — download for macOS / Windows / Linux:</span>
+<span class="comment">#    https://github.com/KingLabsA/devfoundry/releases/latest</span>
+
+<span class="comment"># …or build from source:</span>
+git clone https://github.com/KingLabsA/devfoundry.git
+cd devfoundry/frontend &amp;&amp; npm install &amp;&amp; npm run tauri build
+
+<span class="comment"># …or use the CLI + web app (no desktop build needed):</span>
+cd devfoundry/backend &amp;&amp; python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e .
+devfoundry serve        <span class="comment"># web app at http://localhost:9100/app</span>
+
+<span class="comment"># 2. (Optional) a free local brain — auto-detected:</span>
+ollama pull qwen2.5-coder:14b
+
+<span class="comment"># 3. Open the app → pick a Skill → type an idea → Forge It.</span>
+<span class="ok">✓ spec → design → codebase → refine (build + tests) → deploy</span></pre>
+      </div>
+    </section>
+
+    <section id="docs">
+      <h2>Documentation</h2>
+      <p class="lead">Everything is in the repo.</p>
+      <div class="docs-grid">
+        <a class="doc" href="https://github.com/KingLabsA/devfoundry/blob/main/docs/FEATURES.md"><h4>Features →</h4><p>Every capability in detail</p></a>
+        <a class="doc" href="docs.html#start"><h4>Tutorial →</h4><p>First run to deployed app</p></a>
+        <a class="doc" href="https://github.com/KingLabsA/devfoundry/blob/main/docs/ARCHITECTURE.md"><h4>Architecture →</h4><p>How it fits together</p></a>
+        <a class="doc" href="docs.html#trouble"><h4>Troubleshooting →</h4><p>Common issues & fixes</p></a>
+        <a class="doc" href="https://github.com/KingLabsA/devfoundry/blob/main/docs/DEMO.md"><h4>Demo scripts →</h4><p>Social-media walkthroughs</p></a>
+        <a class="doc" href="https://github.com/KingLabsA/devfoundry/blob/main/docs/ROADMAP.md"><h4>Roadmap →</h4><p>What's next, honestly</p></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>⬢ DevFoundry — MIT licensed. Created by <a href="https://github.com/KingLabsA?tab=repositories">King3Djbl of KingLabs</a> (<a href="https://huggingface.co/King3Djbl">HF</a> · <a href="https://ollama.com/FableForge-AI">Ollama</a>), built with <a href="https://claude.com/claude-code">Claude Code</a>.</span>
+      <span><a href="https://github.com/KingLabsA/devfoundry">GitHub</a> · <a href="docs.html">Docs</a> · <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/ROADMAP.md">Roadmap</a></span>
+    </footer>
+  </div>
+</body>
+</html>

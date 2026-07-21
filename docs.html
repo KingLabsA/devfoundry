@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevFoundry — Documentation</title>
+  <meta name="description" content="DevFoundry docs: get started in 60 seconds, desktop/CLI/web surfaces, models, reasoning modes, free deploys, troubleshooting." />
+  <style>
+    :root { --bg:#0c0f14; --panel:#141922; --panel-2:#1a2030; --border:#262e3f; --text:#e8edf5;
+      --muted:#8b96a8; --accent:#f0883e; --accent-soft:rgba(240,136,62,.14); --ok:#3fb950; }
+    * { box-sizing:border-box; margin:0; }
+    html { scroll-behavior:smooth; }
+    body { background:var(--bg); color:var(--text); font:16px/1.65 -apple-system,"SF Pro Text","Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+    .wrap { max-width:920px; margin:0 auto; padding:0 24px 60px; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:20px 0; position:sticky; top:0; background:rgba(12,15,20,.9); backdrop-filter:blur(8px); z-index:10; border-bottom:1px solid var(--border); }
+    .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--text); }
+    .logo .mark { color:var(--accent); background:var(--accent-soft); border-radius:10px; width:36px; height:36px; display:grid; place-items:center; font-size:20px; }
+    nav a { color:var(--muted); margin-left:18px; font-size:14px; } nav a:hover { color:var(--text); text-decoration:none; }
+    h1 { font-size:34px; letter-spacing:-.5px; margin:44px 0 8px; }
+    h2 { font-size:24px; letter-spacing:-.3px; margin:44px 0 12px; padding-top:8px; border-top:1px solid var(--border); }
+    h3 { font-size:17px; margin:22px 0 8px; }
+    p, li { color:#c6cfdd; } .muted { color:var(--muted); }
+    ol, ul { padding-left:1.3em; margin:10px 0; } li { margin:5px 0; }
+    code { background:var(--panel); border:1px solid var(--border); border-radius:5px; padding:1px 6px; font-size:.9em; font-family:ui-monospace,Menlo,monospace; }
+    pre { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; overflow:auto; font-size:13px; line-height:1.7; margin:12px 0; }
+    pre code { background:none; border:0; padding:0; }
+    table { border-collapse:collapse; width:100%; margin:14px 0; font-size:14px; }
+    th, td { border:1px solid var(--border); padding:8px 12px; text-align:left; vertical-align:top; }
+    th { background:var(--panel-2); } td { color:#c6cfdd; }
+    .callout { background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:12px 16px; margin:14px 0; font-size:14px; }
+    .callout.ok { border-left-color:var(--ok); }
+    .toc { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-top:18px; display:flex; flex-wrap:wrap; gap:8px 18px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="logo" href="index.html"><span class="mark">⬢</span> DevFoundry</a>
+      <nav>
+        <a href="index.html">Home</a><a href="#start">Get started</a><a href="#surfaces">Surfaces</a>
+        <a href="#models">Models</a><a href="#deploy">Deploy</a><a href="#trouble">Troubleshooting</a>
+        <a href="https://github.com/KingLabsA/devfoundry">GitHub</a>
+      </nav>
+    </header>
+
+    <h1>Documentation</h1>
+    <p class="muted">Everything to go from install to a deployed app. The full reference lives in the repo:
+      <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/FEATURES.md">Features</a> ·
+      <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/TUTORIAL.md">Tutorial</a> ·
+      <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/ARCHITECTURE.md">Architecture</a> ·
+      <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/TROUBLESHOOTING.md">Troubleshooting</a> ·
+      <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/ROADMAP.md">Roadmap</a></p>
+    <div class="toc">
+      <a href="#start">1. Get started</a><a href="#surfaces">2. Desktop · CLI · Web</a>
+      <a href="#models">3. Models & reasoning</a><a href="#research">4. Deep Research</a>
+      <a href="#deploy">5. Free deploys</a><a href="#docker">6. About Docker</a><a href="#trouble">7. Troubleshooting</a>
+    </div>
+
+    <h2 id="start">1. Get started (60 seconds)</h2>
+    <div class="callout ok"><strong>No Docker. No API keys required.</strong> The orchestrator runs inside the app
+      and auto-detects local model runtimes (Ollama, LM Studio, FreeLLMAPI). Docker and cloud keys are optional extras.</div>
+    <ol>
+      <li><strong>Install</strong> — grab the <a href="https://github.com/KingLabsA/devfoundry/releases/latest">latest release</a>
+        (<code>.dmg</code> macOS · <code>.msi</code>/<code>.exe</code> Windows · <code>.deb</code>/<code>.rpm</code>/<code>.AppImage</code> Linux) and open it.
+        The orchestrator starts automatically — the header dots turn green.</li>
+      <li><strong>Give it a brain</strong> — either run a local model (<code>ollama pull qwen2.5-coder:14b</code> — the
+        <em>Models</em> page recommends the best fit for your RAM/chip) or paste any provider key and click <em>Use</em>.
+        Verify with <em>⚡ Test LLM</em>.</li>
+      <li><strong>Forge</strong> — pick a Skill (e.g. <em>Premium landing page</em>), a Reasoning mode, type your idea, hit <em>Forge It</em>.
+        Watch Spec → Design → Codebase → Refine → Deploy stream live.</li>
+      <li><strong>Inspect</strong> — the <em>Code</em> tab is a real editor; <em>Canvas</em> previews the app (it can run the
+        actual dev server); <em>History</em> keeps every run.</li>
+    </ol>
+
+    <h2 id="surfaces">2. Three surfaces: desktop, CLI, web</h2>
+    <table>
+      <tr><th>Surface</th><th>How</th><th>Best for</th></tr>
+      <tr><td><strong>Desktop app</strong></td><td>Install from Releases</td><td>The full experience: native menus, tray, ⌘⇧A, notifications, Keychain, auto-update</td></tr>
+      <tr><td><strong>CLI</strong></td><td><code>pip install -e backend</code> → <code>devfoundry</code></td><td>Scripting & CI: <code>devfoundry forge "idea" --skill premium-landing --reasoning deep</code></td></tr>
+      <tr><td><strong>Web app</strong></td><td><code>devfoundry serve</code> → <a href="http://localhost:9100/app">localhost:9100/app</a></td><td>The same UI in any browser — headless machines, remote boxes</td></tr>
+    </table>
+    <pre><code># CLI quick tour
+devfoundry serve                 # orchestrator + web app
+devfoundry forge "a kanban board with drag and drop" --skill web-app-crud
+devfoundry research "state of on-device LLMs" --out report.md
+devfoundry runs                  # history
+devfoundry version               # version & credits</code></pre>
+
+    <h2 id="models">3. Models & reasoning</h2>
+    <p><strong>24 providers</strong> — cloud (Anthropic, OpenAI, Groq, Google, Mistral, …), keyless
+      (OpenCode Zen), self-hosted (FreeLLMAPI), and fully local (Ollama, LM Studio). Keys are pasted once on the
+      <em>Models</em> page, stored on your machine (optionally in the OS Keychain), and read live.</p>
+    <ul>
+      <li><strong>Auto-detect</strong> — with nothing configured, the first running local runtime is used.</li>
+      <li><strong>MoE stage experts</strong> — a different model per stage (e.g. a coder model for codegen).</li>
+      <li><strong>Rotation</strong> — automatic failover across providers on rate limits/errors; one click builds a rotation from every free provider you have.</li>
+      <li><strong>Reasoning modes</strong> — ⚡ Fast (single-shot) · ⚖ Balanced (ToT design) · 🧠 Deep (Self-MoA codegen) ·
+        🎭 Ensemble (MoA across distinct providers) · 🧭 Auto (complexity-routed). Each label states its cost multiple.</li>
+      <li><strong>Your machine</strong> — the app reads your RAM/chip/GPU and recommends local models that actually fit.</li>
+    </ul>
+
+    <h2 id="research">4. Deep Research</h2>
+    <p>Multi-step web research with a live step log: plan sub-queries → search → read sources → cited markdown report
+      (copy or download). Works keyless out of the box; add a free Brave or Tavily key in Settings → Research for
+      full web search.</p>
+
+    <h2 id="deploy">5. Free deploys</h2>
+    <table>
+      <tr><th>Target</th><th>Cost</th><th>Notes</th></tr>
+      <tr><td>Netlify</td><td>free</td><td>static hosting, custom domain supported</td></tr>
+      <tr><td>Vercel</td><td>free hobby</td><td>via token</td></tr>
+      <tr><td>Cloudflare Pages</td><td>free</td><td>via API token + account id</td></tr>
+      <tr><td>Surge.sh</td><td>free</td><td>custom domain supported</td></tr>
+      <tr><td>Hugging Face Spaces</td><td>free CPU</td><td>gradio/static auto-detected</td></tr>
+      <tr><td>Local</td><td>free</td><td>Docker image (if a Dockerfile exists) or a zip bundle — always works</td></tr>
+    </table>
+
+    <h2 id="docker">6. About Docker — optional, never required</h2>
+    <div class="callout"><strong>DevFoundry does not need Docker.</strong> The default <em>embedded mode</em> runs the whole
+      pipeline inside the app. Docker is an optional "isolated mode" for two extras: containerized deploy builds, and the
+      bundled SearXNG/Qdrant services. If Docker isn't installed, those features degrade gracefully (zip deploys,
+      Wikipedia-backed research, local RAG) and everything else works identically.</div>
+
+    <h2 id="trouble">7. Troubleshooting (quick)</h2>
+    <table>
+      <tr><th>Symptom</th><th>Fix</th></tr>
+      <tr><td>"No LLM provider configured"</td><td>Models page → paste a key + <em>Use</em>, or start Ollama/LM Studio (auto-detected). Confirm with ⚡ Test LLM.</td></tr>
+      <tr><td>Header dots stay red</td><td>The orchestrator auto-starts; give it ~10s. Else click <em>Start services</em>, or check <code>/tmp/devfoundry-autostart.log</code>.</td></tr>
+      <tr><td>"Tests skipped — not a code failure"</td><td>Normal: the generated test env can't run; it's reported honestly instead of looping.</td></tr>
+      <tr><td>Cloud deploy fails</td><td>Missing token — it falls back to a zip and names the token to add in Settings → Deployment.</td></tr>
+      <tr><td>Gatekeeper/SmartScreen warning</td><td>Builds are not yet notarized (roadmap). Right-click → Open on macOS.</td></tr>
+    </table>
+    <p class="muted">More: <a href="https://github.com/KingLabsA/devfoundry/blob/main/docs/TROUBLESHOOTING.md">full troubleshooting guide</a>.</p>
+
+    <p class="muted" style="margin-top:48px; border-top:1px solid var(--border); padding-top:16px;">
+      ⬢ DevFoundry — MIT. Created by <a href="https://github.com/KingLabsA?tab=repositories">King3Djbl of KingLabs</a>
+      (<a href="https://huggingface.co/King3Djbl">HF</a> · <a href="https://ollama.com/FableForge-AI">Ollama</a>),
+      built with <a href="https://claude.com/claude-code">Claude Code</a>.</p>
+  </div>
+</body>
+</html>
