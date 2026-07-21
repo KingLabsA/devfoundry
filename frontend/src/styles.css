@@ -420,3 +420,12 @@ body {
 .verify-badge.spec { border-color: var(--accent); color: var(--accent); }
 .verify-badge.failed { border-color: var(--fail); color: var(--fail); }
 .verify-detail { color: var(--muted); font-size: 11px; font-family: ui-monospace, Menlo, monospace; }
+
+/* ---- about card ---- */
+.about-head { display: flex; align-items: center; gap: 14px; }
+.about-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.about-credits summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.about-credits summary:hover { color: var(--text); }
+.credits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px 16px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.credits-grid a { color: var(--accent); }

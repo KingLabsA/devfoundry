@@ -40,6 +40,12 @@ export function SettingsPage() {
   const [theme, setTheme] = useState(currentTheme());
   const [presets, setPresets] = useState<{ name: string; config: Record<string, string> }[]>([]);
   const [presetName, setPresetName] = useState("");
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    import("@tauri-apps/api/app").then(({ getVersion }) => getVersion().then(setAppVersion)).catch(() => {});
+  }, []);
 
   const load = async () => {
     if (!IS_TAURI) return;
@@ -163,11 +169,45 @@ export function SettingsPage() {
       {message && <div className="notice">{message}</div>}
 
       {tab === "general" && (
-        <section className="settings-group">
-          <h3>About & Updates</h3>
-          <p className="hint">DevFoundry v0.2.1 · <a href="https://github.com/KingLabsA/devfoundry" target="_blank" rel="noreferrer">GitHub</a></p>
-          <button className="btn" style={{ alignSelf: "flex-start" }} onClick={checkForUpdates}>↑ Check for updates</button>
+        <section className="settings-group about-card">
+          <div className="about-head">
+            <span className="brand-mark">⬢</span>
+            <div>
+              <h3 style={{ margin: 0 }}>DevFoundry{appVersion ? ` v${appVersion}` : ""}</h3>
+              <p className="hint" style={{ margin: 0 }}>The local-first AI software factory · MIT license</p>
+            </div>
+            <button className="btn" style={{ marginLeft: "auto" }} onClick={checkForUpdates}>↑ Check for updates</button>
+          </div>
           {updateMsg && <div className="notice">{updateMsg}</div>}
+          <p className="hint">
+            Created by <strong>jahblesslion</strong> (<a href="https://github.com/KingLabsA" target="_blank" rel="noreferrer">KingLabsA</a>)
+            {" "}· built with <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer">Claude Code</a>.
+          </p>
+          <div className="about-links">
+            <a className="btn small" href="https://github.com/KingLabsA/devfoundry" target="_blank" rel="noreferrer">GitHub</a>
+            <a className="btn small" href="https://github.com/KingLabsA/devfoundry/releases" target="_blank" rel="noreferrer">Releases</a>
+            <a className="btn small" href="https://github.com/KingLabsA/devfoundry/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
+            <a className="btn small" href="https://github.com/KingLabsA/devfoundry/issues/new/choose" target="_blank" rel="noreferrer">Report an issue</a>
+            <a className="btn small" href="https://github.com/KingLabsA/devfoundry/blob/main/LICENSE" target="_blank" rel="noreferrer">License</a>
+          </div>
+          <details className="about-credits">
+            <summary>Acknowledgments — open source DevFoundry stands on</summary>
+            <div className="credits-grid">
+              <span><a href="https://tauri.app" target="_blank" rel="noreferrer">Tauri</a> — native shell</span>
+              <span><a href="https://react.dev" target="_blank" rel="noreferrer">React</a> + <a href="https://vitejs.dev" target="_blank" rel="noreferrer">Vite</a> — UI</span>
+              <span><a href="https://fastapi.tiangolo.com" target="_blank" rel="noreferrer">FastAPI</a> — orchestrator</span>
+              <span><a href="https://tailwindcss.com" target="_blank" rel="noreferrer">Tailwind CSS</a> — generated apps</span>
+              <span><a href="https://ollama.com" target="_blank" rel="noreferrer">Ollama</a> & <a href="https://lmstudio.ai" target="_blank" rel="noreferrer">LM Studio</a> — local models</span>
+              <span><a href="https://github.com/tashfeenahmed/freellmapi" target="_blank" rel="noreferrer">FreeLLMAPI</a> — unified free gateway</span>
+              <span><a href="https://opencode.ai" target="_blank" rel="noreferrer">OpenCode</a> — Zen models & CLI</span>
+              <span><a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">Model Context Protocol</a> — plugins</span>
+              <span><a href="https://docs.searxng.org" target="_blank" rel="noreferrer">SearXNG</a> — bundled search</span>
+              <span><a href="https://qdrant.tech" target="_blank" rel="noreferrer">Qdrant</a> — vector store</span>
+              <span><a href="https://huggingface.co" target="_blank" rel="noreferrer">Hugging Face</a> — models & Spaces</span>
+              <span>Inspired by <a href="https://github.com/FoundationAgents/MetaGPT" target="_blank" rel="noreferrer">MetaGPT</a> & <a href="https://github.com/stackblitz-labs/bolt.diy" target="_blank" rel="noreferrer">bolt.diy</a></span>
+            </div>
+            <p className="hint" style={{ marginTop: 8 }}>Full list with licenses: <a href="https://github.com/KingLabsA/devfoundry/blob/main/CREDITS.md" target="_blank" rel="noreferrer">CREDITS.md</a></p>
+          </details>
         </section>
       )}
 

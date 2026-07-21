@@ -13,6 +13,12 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
+    "publisher": "KingLabsA",
+    "copyright": "© 2026 jahblesslion (KingLabsA) — MIT license",
+    "category": "DeveloperTool",
+    "shortDescription": "The local-first AI software factory",
+    "longDescription": "DevFoundry designs, codes, tests, and deploys applications on your own machine, with your own models. Created by jahblesslion (KingLabsA), built with Claude Code. MIT licensed.",
+    "homepage": "https://github.com/KingLabsA/devfoundry",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

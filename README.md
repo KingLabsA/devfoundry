@@ -93,6 +93,10 @@ Press **⌘K** anywhere for the command palette (navigate + switch theme).
 - **[Roadmap](docs/ROADMAP.md)** — what's next
 - **[Contributing](CONTRIBUTING.md)** · **[Changelog](CHANGELOG.md)**
 
+## Credits
+
+Created by **jahblesslion** ([KingLabsA](https://github.com/KingLabsA)), built with [Claude Code](https://claude.com/claude-code). DevFoundry stands on Tauri, React, FastAPI, Ollama, FreeLLMAPI, MCP, SearXNG, Qdrant, and more — the full list with licenses is in [CREDITS.md](CREDITS.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
