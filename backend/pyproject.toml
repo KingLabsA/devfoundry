@@ -1,6 +1,6 @@
 [project]
 name = "devfoundry"
-version = "0.2.4"
+version = "0.2.5"
 description = "The local-first AI software factory — CLI + orchestrator. By King3Djbl of KingLabs."
 requires-python = ">=3.11"
 dependencies = [

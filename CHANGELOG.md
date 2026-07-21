@@ -2,6 +2,16 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.5]
+
+### Fixed
+- **Plugins (and npm/docker tooling) now work when the app is launched from Finder/Dock.**
+  GUI launches get a minimal PATH without Homebrew/npx/uvx, so every stdio MCP server failed
+  with "No such file or directory" — and npm builds/deploy CLIs would have failed the same way.
+  The orchestrator and all native spawns (backend, dev server, docker) now augment PATH with
+  the standard tool locations. Reproduced under a Finder-identical environment: all plugins
+  errored before the fix, all connect after.
+
 ## [0.2.4]
 
 ### Added

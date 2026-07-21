@@ -12,13 +12,15 @@ from app.api.mcp_routes import router as mcp_router
 from app.api.project_routes import router as project_router
 from app.api.routes import router as api_router
 from app.api.ws import router as ws_router
+from app.config import augment_path
 from app.logging_conf import configure_logging
 
+augment_path()  # Finder-launched apps get a minimal PATH — fix before anything spawns
 configure_logging()
 
 app = FastAPI(
     title="DevFoundry",
-    version="0.2.4",
+    version="0.2.5",
     description="The local-first AI software factory — created by King3Djbl of KingLabs.",
 )
 app.add_middleware(

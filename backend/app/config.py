@@ -1,7 +1,26 @@
+import glob
+import os
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+
+def augment_path() -> None:
+    """GUI-launched apps (Finder/Dock) get a minimal PATH without Homebrew/npx/uvx —
+    which breaks MCP plugin spawns, npm builds, and deploy CLIs. Prepend the standard
+    tool locations so the orchestrator works identically however it was launched."""
+    home = os.path.expanduser("~")
+    extras = [
+        "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin",
+        f"{home}/.local/bin", f"{home}/.opencode/bin", f"{home}/.bun/bin",
+        f"{home}/.cargo/bin", f"{home}/bin",
+    ]
+    extras += sorted(glob.glob(f"{home}/.nvm/versions/node/*/bin"), reverse=True)[:1]
+    current = os.environ.get("PATH", "").split(":")
+    add = [p for p in extras if os.path.isdir(p) and p not in current]
+    if add:
+        os.environ["PATH"] = ":".join(add + current)
 
 
 class Settings(BaseSettings):

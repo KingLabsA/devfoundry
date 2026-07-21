@@ -27,6 +27,29 @@ fn backend_port_open() -> bool {
     TcpStream::connect(("127.0.0.1", 9100)).is_ok()
 }
 
+/// Finder/Dock launches get a minimal PATH (no Homebrew, npx, uvx, docker).
+/// Prepend the standard tool dirs so child processes behave like a terminal launch.
+fn augmented_path() -> String {
+    let home = std::env::var("HOME").unwrap_or_default();
+    let extras = [
+        "/opt/homebrew/bin".to_string(),
+        "/opt/homebrew/sbin".to_string(),
+        "/usr/local/bin".to_string(),
+        format!("{home}/.local/bin"),
+        format!("{home}/.opencode/bin"),
+        format!("{home}/.bun/bin"),
+        format!("{home}/.cargo/bin"),
+        format!("{home}/bin"),
+    ];
+    let current = std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin:/usr/sbin:/sbin".into());
+    let mut parts: Vec<String> = extras
+        .into_iter()
+        .filter(|p| Path::new(p).is_dir() && !current.split(':').any(|c| c == p))
+        .collect();
+    parts.push(current);
+    parts.join(":")
+}
+
 fn parse_env_file(dir: &str) -> HashMap<String, String> {
     let mut vars = HashMap::new();
     for candidate in [".env", ".env.example"] {
@@ -76,6 +99,7 @@ fn spawn_backend(dir: &str) -> Result<Child, String> {
 
     let mut env_vars = parse_env_file(dir);
     env_vars.entry("DEVFOUNDRY_EMBEDDED".into()).or_insert_with(|| "1".into());
+    env_vars.insert("PATH".into(), augmented_path());
     env_vars.insert(
         "DEVFOUNDRY_WORKSPACE".into(),
         Path::new(dir).join("workspace").to_string_lossy().into_owned(),
@@ -124,6 +148,7 @@ fn compose(dir: &str, args: &[&str]) -> Result<String, String> {
     let out = Command::new("docker")
         .arg("compose")
         .args(args)
+        .env("PATH", augmented_path())
         .current_dir(dir)
         .output()
         .map_err(|e| format!("failed to run docker: {e}"))?;
@@ -272,6 +297,7 @@ fn start_dev_server(project_dir: String, state: tauri::State<DevServers>) -> Res
         .args(["run", "dev", "--", "--port", &port.to_string(), "--host", "127.0.0.1"])
         .current_dir(dir)
         .env("PORT", port.to_string())
+        .env("PATH", augmented_path())
         .env("BROWSER", "none")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
