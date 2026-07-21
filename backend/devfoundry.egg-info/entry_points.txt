@@ -1,0 +1,2 @@
+[console_scripts]
+devfoundry = app.cli:main

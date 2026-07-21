@@ -2,6 +2,27 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.2]
+
+### Added
+- **CLI surface** — `pip install -e backend` → `devfoundry` command: `serve` (orchestrator +
+  web app), `forge "idea" --skill --reasoning --deploy` (streams the pipeline), `research`
+  (cited report, `--out file.md`), `runs`, `version`.
+- **Web-app surface** — the orchestrator serves the full UI at `http://localhost:9100/app`
+  (Claude Code-style multi-surface: desktop, CLI, web).
+- **Website docs** — real documentation page (`website/docs.html`): get started, surfaces,
+  models & reasoning, deploys, Docker-optional explainer, troubleshooting. Landing-page doc
+  links now point at real pages (were dead relative .md links).
+- Rich in-app About with author identity and acknowledgments; CREDITS.md.
+
+### Changed
+- **Attribution corrected everywhere**: created by **King3Djbl** of **KingLabs**
+  (GitHub KingLabsA · HF King3Djbl · Ollama FableForge-AI) — in-app About, native bundle
+  copyright/publisher (macOS About panel, deb/rpm/msi metadata), LICENSE, README, website.
+  Installers from this release on carry the correct name.
+- "No Docker required" made explicit across the website and docs — embedded mode is the
+  default; Docker remains an optional extra for isolated mode and container deploys.
+
 ## [0.2.1]
 
 ### Added

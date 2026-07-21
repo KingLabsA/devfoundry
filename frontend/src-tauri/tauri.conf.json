@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DevFoundry",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "identifier": "com.devfoundry.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,7 +14,7 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "publisher": "KingLabs",
-    "copyright": "© 2026 King3Djbl (KingLabs) — MIT license",
+    "copyright": "\u00a9 2026 King3Djbl (KingLabs) \u2014 MIT license",
     "category": "DeveloperTool",
     "shortDescription": "The local-first AI software factory",
     "longDescription": "DevFoundry designs, codes, tests, and deploys applications on your own machine, with your own models. Created by King3Djbl of KingLabs, built with Claude Code. MIT licensed.",
