@@ -78,9 +78,55 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
   }
 
   const embedded = health?.mode === "embedded" || health?.mode === "mock";
+  const [qdrant, setQdrant] = useState<{ installed: boolean; running: boolean } | null>(null);
+  const [qBusy, setQBusy] = useState(false);
+
+  const refreshQdrant = useCallback(async () => {
+    try {
+      const r = await fetch("http://localhost:9100/api/embedded/qdrant/status");
+      if (r.ok) setQdrant(await r.json());
+    } catch { /* backend offline */ }
+  }, []);
+  useEffect(() => { refreshQdrant(); const id = setInterval(refreshQdrant, 8000); return () => clearInterval(id); }, [refreshQdrant]);
+
+  const qdrantAction = async (action: "install" | "start" | "stop") => {
+    setQBusy(true);
+    setMessage(action === "install" ? "Downloading Qdrant native binary (~40MB, one time)…" : `Qdrant: ${action}…`);
+    try {
+      const r = await fetch(`http://localhost:9100/api/embedded/qdrant/${action}`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      setMessage(`Qdrant ${action} — ok`);
+      await refreshQdrant();
+    } catch (err) {
+      setMessage(`Qdrant ${action} failed: ${err}`);
+    } finally {
+      setQBusy(false);
+    }
+  };
 
   return (
     <div className="page">
+      <section className="settings-group">
+        <h3>Embedded services — built in, no Docker</h3>
+        <p className="hint">Native binaries managed by DevFoundry. <strong>Qdrant</strong> powers semantic RAG;
+          without it, retrieval falls back to local embeddings automatically.</p>
+        <div className="field-row" style={{ alignItems: "center" }}>
+          <span className={`dot ${qdrant?.running ? "up" : "down"}`} />
+          <span style={{ fontSize: 13 }}>Qdrant vector store
+            {qdrant ? (qdrant.running ? " — running (native)" : qdrant.installed ? " — installed, stopped" : " — not installed") : " — checking…"}
+          </span>
+          {qdrant && !qdrant.installed && (
+            <button className="btn small primary" disabled={qBusy} onClick={() => qdrantAction("install")}>⬇ Install (native)</button>
+          )}
+          {qdrant?.installed && !qdrant.running && (
+            <button className="btn small primary" disabled={qBusy} onClick={() => qdrantAction("start")}>▶ Start</button>
+          )}
+          {qdrant?.running && (
+            <button className="btn small" disabled={qBusy} onClick={() => qdrantAction("stop")}>■ Stop</button>
+          )}
+        </div>
+      </section>
       {embedded && (
         <div className="notice">
           <strong>Embedded mode</strong> — all pipeline stages run inside the app; nothing external is required.

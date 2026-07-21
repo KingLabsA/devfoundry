@@ -59,6 +59,37 @@ async def research_ws(ws: WebSocket) -> None:
             pass
 
 
+# ---------------------------------------------------------------- embedded services (no Docker)
+@router.get("/embedded/qdrant/status")
+async def qdrant_status() -> dict:
+    from app import embedded_services
+    return await embedded_services.status()
+
+
+@router.post("/embedded/qdrant/install")
+async def qdrant_install() -> dict:
+    from app import embedded_services
+    try:
+        return await embedded_services.install()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"install failed: {exc}")
+
+
+@router.post("/embedded/qdrant/start")
+async def qdrant_start() -> dict:
+    from app import embedded_services
+    try:
+        return await embedded_services.start()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, str(exc))
+
+
+@router.post("/embedded/qdrant/stop")
+async def qdrant_stop() -> dict:
+    from app import embedded_services
+    return embedded_services.stop()
+
+
 # ---------------------------------------------------------------- presets
 class Preset(BaseModel):
     name: str

@@ -63,6 +63,8 @@ Mac and running the whole pipeline offline, then a Deep Research pass with no AP
 ## Ready-made assets (in `website/assets/`)
 
 - `og-card.png` — 1200×630 social card (wired as `og:image` on the landing page)
+- `demo.mp4` (1280×800) + `demo-vertical.mp4` (1080×1920, for Reels/TikTok/Shorts) — rendered
+  from a **real verified run's unedited event log**; embedded on the landing page
 - `demo.gif` — animated pipeline log rendered from a **real verified run** (the Verdant
   plant-shop build: installed ✓ builds ✓ tests ✓), ends on the verification line
 - `screenshot-forge.png`, `screenshot-models.png`, `screenshot-history.png` — real window

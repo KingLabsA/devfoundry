@@ -2,6 +2,21 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.3]
+
+### Added
+- **Embedded native services — Docker now fully optional on the desktop.** DevFoundry downloads
+  the official Qdrant binary for your OS/arch (~69MB, one time) and supervises it as a native
+  child process (auto-starts with the app once installed). Services page gains an
+  "Embedded services — built in, no Docker" section with install/start/stop.
+  Verified end-to-end with the Docker daemon down: install → run → RAG indexes and retrieves
+  through the native instance.
+- **Demo video assets** rendered from a real verified run's unedited event log:
+  `demo.mp4` (1280×800, embedded on the landing page) + `demo-vertical.mp4` (1080×1920 for
+  Reels/TikTok/Shorts).
+- **Website live** at https://kinglabsa.github.io/devfoundry/ (landing + real docs page),
+  published via GitHub Pages.
+
 ## [0.2.2]
 
 ### Added
