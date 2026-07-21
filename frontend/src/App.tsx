@@ -19,6 +19,7 @@ import { ResearchPage } from "./pages/ResearchPage";
 import { CommandPalette } from "./components/CommandPalette";
 import { SkillPicker } from "./components/SkillPicker";
 import { VerificationBadge } from "./components/VerificationBadge";
+import { ReasoningPicker } from "./components/ReasoningPicker";
 import { usePipelineStream } from "./hooks/usePipelineStream";
 import { useHealth } from "./hooks/useHealth";
 
@@ -44,6 +45,13 @@ export default function App() {
   const [deployTarget, setDeployTarget] = useState("auto");
   const [deployDomain, setDeployDomain] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [reasoning, setReasoning] = useState("fast");
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    import("@tauri-apps/api/app").then(({ getVersion }) => getVersion().then(setAppVersion)).catch(() => {});
+  }, []);
 
   const artifacts = useMemo(() => events.filter((e) => e.kind === "artifact"), [events]);
   const deployUrl = useMemo(() => {
@@ -90,7 +98,7 @@ export default function App() {
   }, [stage, error]);
 
   const submit = (idea: string) =>
-    start(idea, { deploy_target: deployTarget, custom_domain: deployDomain, skills });
+    start(idea, { deploy_target: deployTarget, custom_domain: deployDomain, skills, reasoning });
 
   return (
     <div className="shell">
@@ -112,6 +120,7 @@ export default function App() {
           <>
             <IdeaInput disabled={running} onSubmit={submit} running={running} onStop={stop} />
             {!running && <SkillPicker selected={skills} onChange={setSkills} />}
+            {!running && <ReasoningPicker mode={reasoning} onChange={setReasoning} />}
             <DeployBar
               target={deployTarget} domain={deployDomain}
               onTarget={setDeployTarget} onDomain={setDeployDomain}
@@ -155,7 +164,7 @@ export default function App() {
           {running && <span className="spinner" aria-label="working" />}
           {running && <button className="btn small stop-btn" onClick={stop}>■ Stop</button>}
           {page === "forge" && <VerificationBadge events={events} />}
-          <span className="statusbar-right">{hasProject && runId ? `run ${runId.slice(0, 8)}` : "DevFoundry v0.2.0"}</span>
+          <span className="statusbar-right">{hasProject && runId ? `run ${runId.slice(0, 8)}` : `DevFoundry${appVersion ? ` v${appVersion}` : ""}`}</span>
         </footer>
       </div>
     </div>

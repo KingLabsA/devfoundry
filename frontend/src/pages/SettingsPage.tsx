@@ -165,7 +165,7 @@ export function SettingsPage() {
       {tab === "general" && (
         <section className="settings-group">
           <h3>About & Updates</h3>
-          <p className="hint">DevFoundry v0.2.0 · <a href="https://github.com/KingLabsA/devfoundry" target="_blank" rel="noreferrer">GitHub</a></p>
+          <p className="hint">DevFoundry v0.2.1 · <a href="https://github.com/KingLabsA/devfoundry" target="_blank" rel="noreferrer">GitHub</a></p>
           <button className="btn" style={{ alignSelf: "flex-start" }} onClick={checkForUpdates}>↑ Check for updates</button>
           {updateMsg && <div className="notice">{updateMsg}</div>}
         </section>

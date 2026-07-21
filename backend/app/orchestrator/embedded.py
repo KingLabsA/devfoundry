@@ -156,12 +156,29 @@ def _files_from_response(text: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in files.items()}
 
 
-async def design_stage(run_id: str, idea: str, skills: list[str]) -> str:
-    """Produce a concrete design brief the codegen stage must follow (premium quality)."""
+async def design_stage(run_id: str, idea: str, skills: list[str], mode: str = "fast") -> str:
+    """Produce a concrete design brief the codegen stage must follow (premium quality).
+    In balanced/deep/ensemble modes, uses ToT: expand K briefs → judge → prune to 1."""
+    from app.orchestrator.reasoning import tot_design
     from app.skills import build_guidance
 
     await _emit(run_id, Stage.SPEC, "Lead Designer: preparing the design brief...")
     guidance = build_guidance(skills)
+
+    async def emit(msg: str) -> None:
+        await _emit(run_id, Stage.SPEC, msg)
+
+    if mode in ("balanced", "deep", "ensemble"):
+        try:
+            brief = await tot_design(idea, guidance, emit)
+        except RuntimeError:
+            brief = ""
+        if brief:
+            await _emit(run_id, Stage.SPEC, "Produced design brief (ToT)", kind="artifact",
+                        artifact="design_brief", content=brief)
+            return brief
+        await _emit(run_id, Stage.SPEC, "ToT design failed — falling back to single brief")
+
     brief = await complete(
         f"Product idea: {idea}\n\n{guidance}\n\n"
         "Write a concrete DESIGN BRIEF for this product: pick a brand color + palette, a type "
@@ -174,7 +191,7 @@ async def design_stage(run_id: str, idea: str, skills: list[str]) -> str:
 
 
 async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path,
-                        skills: list[str] | None = None) -> list[str]:
+                        skills: list[str] | None = None, mode: str = "fast") -> list[str]:
     from app.knowledge import context_for
     from app.skills import build_guidance
 
@@ -191,18 +208,30 @@ async def codegen_stage(run_id: str, idea: str, specs: dict, project_dir: Path,
               f"{guidance}\n\n{knowledge}")
     files: dict[str, str] = {}
     last_err = ""
-    for attempt in range(2):
-        text = await complete(prompt, CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
+    if mode in ("deep", "ensemble"):
+        # Self-MoA (deep) / MoA across distinct providers (ensemble): N proposals → judge → best
+        from app.orchestrator.reasoning import candidate_codegen
+
+        async def emit(msg: str) -> None:
+            await _emit(run_id, Stage.CODEGEN, msg)
         try:
-            files = _files_from_response(text)
-            if files:
-                break
-        except (ValueError, json.JSONDecodeError) as exc:
+            files = await candidate_codegen(prompt, CODEGEN_SYSTEM, _files_from_response, emit, mode)
+        except ValueError as exc:
             last_err = str(exc)
-            await _emit(run_id, Stage.CODEGEN,
-                        f"Retry {attempt + 1}: could not parse model output ({last_err[:80]})", kind="log")
-            prompt += ("\n\nIMPORTANT: use ONLY the '=== FILE: path ===' format, "
-                       "one header per file, raw file contents, no JSON, no code fences.")
+            await _emit(run_id, Stage.CODEGEN, f"{mode} codegen failed ({last_err[:80]}) — single-shot fallback")
+    if not files:
+        for attempt in range(2):
+            text = await complete(prompt, CODEGEN_SYSTEM, max_tokens=16000, role="codegen")
+            try:
+                files = _files_from_response(text)
+                if files:
+                    break
+            except (ValueError, json.JSONDecodeError) as exc:
+                last_err = str(exc)
+                await _emit(run_id, Stage.CODEGEN,
+                            f"Retry {attempt + 1}: could not parse model output ({last_err[:80]})", kind="log")
+                prompt += ("\n\nIMPORTANT: use ONLY the '=== FILE: path ===' format, "
+                           "one header per file, raw file contents, no JSON, no code fences.")
     if not files:
         raise ValueError(f"codegen produced no parseable files: {last_err}")
     written = _write_files(project_dir, files)
@@ -499,13 +528,22 @@ async def run_embedded_pipeline(state: RunState, set_stage, workspace: Path) -> 
 
     skills = state.artifacts.get("skills", [])
 
+    # Resolve the reasoning mode (fast/balanced/deep/ensemble; auto probes complexity).
+    from app.orchestrator.reasoning import resolve_mode
+
+    async def _mode_emit(msg: str) -> None:
+        await _emit(run_id, Stage.SPEC, msg)
+    mode = await resolve_mode(state.artifacts.get("reasoning", ""), state.idea, _mode_emit)
+    state.artifacts["reasoning_resolved"] = mode
+    await _emit(run_id, Stage.SPEC, f"Reasoning mode: {mode}", kind="status")
+
     await set_stage(state, Stage.SPEC, "Generating specifications & design")
     specs = await spec_stage(run_id, state.idea)
-    specs["design_brief"] = await design_stage(run_id, state.idea, skills)
+    specs["design_brief"] = await design_stage(run_id, state.idea, skills, mode)
     state.artifacts["specs"] = specs
 
     await set_stage(state, Stage.CODEGEN, "Generating codebase")
-    files = await codegen_stage(run_id, state.idea, specs, project_dir, skills)
+    files = await codegen_stage(run_id, state.idea, specs, project_dir, skills, mode)
     state.artifacts["project_dir"] = str(project_dir)
 
     await set_stage(state, Stage.TASKS, "Planning tasks")

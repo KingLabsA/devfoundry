@@ -2,6 +2,28 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.1]
+
+### Added
+- **Reasoning modes** (Forge page picker + `REASONING_MODE`/`REASONING_N`): user-selectable
+  inference strategies — `fast` (single-shot), `balanced` (**ToT** on the design stage:
+  expand K briefs → judge → prune), `deep` (balanced + **Self-MoA** codegen: N samples from
+  the active model, judge ranks), `ensemble` (balanced + **MoA** codegen: proposals from
+  distinct configured providers, judge ranks), and `auto` (entropy-inspired complexity probe
+  routes among them). Verified live: deep mode ran ToT + Self-MoA with judge selection.
+- `complete(override=(provider, model))` to force a specific provider for ensemble proposals.
+- Dynamic version display (reads the app version at runtime — no stale strings).
+
+### Fixed
+- **Per-user default project directory** — installers no longer contain a hardcoded
+  `/Users/<name>/…` path. The default is now computed at runtime from `$HOME`
+  (`~/Documents/devfoundry`), exposed via a `get_default_project_dir` command and seeded
+  into the frontend on first launch. v0.2.0 installers pointed at the developer's home
+  directory, which broke orchestrator autostart on any other machine (and leaked a
+  username in the public source).
+- ToT design-candidate failures are now surfaced in the event log instead of silently
+  swallowed before fallback.
+
 ## [0.2.0] — first public release
 
 ### Added

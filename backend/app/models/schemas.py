@@ -22,6 +22,7 @@ class RunRequest(BaseModel):
     deploy_target: str = ""      # override DEPLOY_TARGET for this run
     custom_domain: str = ""      # e.g. myapp.surge.sh / netlify site name
     skills: list[str] = Field(default_factory=list)  # design/capability skills
+    reasoning: str = ""  # fast | balanced | deep | ensemble | auto ("" = env default)
 
 
 class RunCreated(BaseModel):

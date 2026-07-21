@@ -4,6 +4,7 @@ export interface DeployOptions {
   deploy_target?: string;
   custom_domain?: string;
   skills?: string[];
+  reasoning?: string;
 }
 
 export interface ProjectFile {

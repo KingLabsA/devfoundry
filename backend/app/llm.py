@@ -163,8 +163,14 @@ async def _call(provider_id: str, model: str, prompt: str, system: str, max_toke
         return msg.get("content") or msg.get("reasoning_content") or ""
 
 
-async def complete(prompt: str, system: str = "", max_tokens: int = 4000, role: str = "") -> str:
+async def complete(prompt: str, system: str = "", max_tokens: int = 4000, role: str = "",
+                   override: tuple[str, str] | None = None) -> str:
+    """`override=(provider_id, model)` forces a specific provider first (used by the
+    MoA ensemble to get proposals from distinct providers); the normal chain remains
+    as fallback if the override fails."""
     candidates = await _candidates(role)
+    if override:
+        candidates = [override] + [c for c in candidates if c != override]
     if not candidates:
         raise LLMNotConfigured(
             "No LLM available. Add a provider key on the Models page, or start a local runtime "
