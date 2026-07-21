@@ -7,6 +7,9 @@
   <meta name="description" content="Type an app idea. Get a designed, coded, tested, and deployed application — while you watch. Local-first, 24 model providers or fully offline, free deploys. Open source." />
   <meta property="og:title" content="DevFoundry — the local-first AI software factory" />
   <meta property="og:description" content="Idea in → designed, coded, tested, deployed app out. On your machine, with your models. Open source." />
+  <meta property="og:image" content="assets/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="assets/og-card.png" />
   <style>
     :root {
       --bg:#0c0f14; --panel:#141922; --panel-2:#1a2030; --border:#262e3f;
@@ -61,6 +64,10 @@
     .doc h4 { margin:0 0 4px; font-size:15px; } .doc p { color:var(--muted); font-size:13px; margin:0; }
 
     footer { border-top:1px solid var(--border); padding:28px 0 44px; color:var(--muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .shot-frame { border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--panel); box-shadow:0 24px 80px rgba(0,0,0,.45); }
+    .shot-frame img { display:block; width:100%; height:auto; }
+    .shots { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .shots figcaption { color:var(--muted); font-size:13px; padding:10px 4px 0; text-align:center; }
   </style>
 </head>
 <body>
@@ -79,10 +86,13 @@
       <p>DevFoundry runs an autonomous software factory on your own machine — it designs, codes, tests,
         and deploys a real application while you watch, using your models (or fully offline).</p>
       <div class="cta">
-        <a class="btn primary" href="#start">Download for desktop</a>
+        <a class="btn primary" href="https://github.com/KingLabsA/devfoundry/releases/latest">Download for desktop</a>
         <a class="btn ghost" href="#how">See how it works</a>
       </div>
       <div class="sub">macOS · Windows · Linux · Bring your own models · Free deploys</div>
+      <div class="shot-frame" style="margin-top:40px">
+        <img src="assets/demo.gif" alt="A real DevFoundry pipeline run: spec → design → codebase → refine → verified" loading="lazy" />
+      </div>
     </div>
 
     <div class="pipeline" id="how">
@@ -126,6 +136,16 @@
         <div class="card"><div class="ico">🖥️</div><h3>Best local model for your specs</h3><p>Detects your RAM, chip, and GPU (Metal) and recommends a model that fits — with the exact <code>ollama pull</code> command.</p></div>
         <div class="card"><div class="ico">🔀</div><h3>MoE + auto-router</h3><p>A different expert model per pipeline stage, automatic failover on rate limits, and a one-click rotation built from every free provider you have.</p></div>
         <div class="card"><div class="ico">🧩</div><h3>Any gateway</h3><p>OpenAI-compatible? It works — including self-hosted proxies like FreeLLMAPI.</p></div>
+      </div>
+    </section>
+
+    <section id="screens">
+      <h2>Inside the app</h2>
+      <p class="lead">Real screenshots — nothing mocked.</p>
+      <div class="shots">
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-forge.png" alt="Forge page: idea input, skills, five-stage pipeline" loading="lazy" /></div><figcaption>Forge — idea in, pipeline streams live</figcaption></figure>
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-models.png" alt="Models page: 24 providers, auto-router, best local models for your machine" loading="lazy" /></div><figcaption>Models — 24 providers, auto-router, your-machine picker</figcaption></figure>
+        <figure style="margin:0"><div class="shot-frame"><img src="assets/screenshot-history.png" alt="History page: every build persisted" loading="lazy" /></div><figcaption>History — every build persisted, replayable</figcaption></figure>
       </div>
     </section>
 

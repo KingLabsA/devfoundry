@@ -155,7 +155,7 @@ export default function App() {
           {running && <span className="spinner" aria-label="working" />}
           {running && <button className="btn small stop-btn" onClick={stop}>■ Stop</button>}
           {page === "forge" && <VerificationBadge events={events} />}
-          <span className="statusbar-right">{hasProject && runId ? `run ${runId.slice(0, 8)}` : "DevFoundry v0.1.0"}</span>
+          <span className="statusbar-right">{hasProject && runId ? `run ${runId.slice(0, 8)}` : "DevFoundry v0.2.0"}</span>
         </footer>
       </div>
     </div>

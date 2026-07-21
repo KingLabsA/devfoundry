@@ -2,10 +2,21 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-export const DEFAULT_PROJECT_DIR = "/Users/jahblesslion/Documents/devfoundry";
+const PROJECT_DIR_KEY = "devfoundry.projectDir";
+let cachedDefaultDir = "";
+// Seed the per-user default (~/Documents/devfoundry) from Rust at module load —
+// no hardcoded usernames anywhere.
+if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+  invoke<string>("get_default_project_dir")
+    .then((d) => {
+      cachedDefaultDir = d;
+      if (!localStorage.getItem(PROJECT_DIR_KEY)) localStorage.setItem(PROJECT_DIR_KEY, d);
+    })
+    .catch(() => {});
+}
 
 export function getProjectDir(): string {
-  return localStorage.getItem("devfoundry.projectDir") || DEFAULT_PROJECT_DIR;
+  return localStorage.getItem(PROJECT_DIR_KEY) || cachedDefaultDir;
 }
 
 export function setProjectDir(dir: string) {

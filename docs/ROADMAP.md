@@ -29,6 +29,11 @@ Refine currently runs tests once and skips unrunnable envs. Next: actually run `
 during refine, feed real failures back to the model, and iterate until green — so generated apps ship
 with passing tests, not skipped ones.
 
+### 🟡 Entropy-based dynamic router (MoA / Self-MoA / ToT)
+Evolve routing from static rotation to entropy-guided depth selection — easy prompts go to a
+fast local model, hard ones to ensembles (Self-MoA on codegen, ToT on design). Research and
+mapping in [RESEARCH-NOTES.md](RESEARCH-NOTES.md).
+
 ### 🟡 True agentic memory (RAG over the workspace)
 The knowledge base is curated best-practices. Add per-project RAG: embed the generated codebase into
 Qdrant and let refine retrieve relevant files for context on large projects.

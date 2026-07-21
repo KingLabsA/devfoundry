@@ -8,7 +8,18 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 
-const DEFAULT_PROJECT_DIR: &str = "/Users/jahblesslion/Documents/devfoundry";
+/// Default project location: ~/Documents/devfoundry (no hardcoded usernames).
+fn default_project_dir() -> String {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(|h| format!("{h}/Documents/devfoundry"))
+        .unwrap_or_else(|_| ".".into())
+}
+
+#[tauri::command]
+fn get_default_project_dir() -> String {
+    default_project_dir()
+}
 
 struct BackendProc(Mutex<Option<Child>>);
 
@@ -363,7 +374,7 @@ fn main() {
             if backend_port_open() {
                 autostart_log("autostart: port 9100 already in use — skipping spawn");
             } else {
-                match spawn_backend(DEFAULT_PROJECT_DIR) {
+                match spawn_backend(&default_project_dir()) {
                     Ok(child) => {
                         autostart_log(&format!("autostart: orchestrator pid {}", child.id()));
                         *state.0.lock().unwrap() = Some(child);
@@ -467,6 +478,7 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            get_default_project_dir,
             start_backend,
             stop_backend,
             docker_available,
