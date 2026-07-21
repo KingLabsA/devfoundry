@@ -52,7 +52,7 @@ Native **desktop** app (Tauri) — not mobile or web. Same codebase ships to all
 Download the latest `.dmg` / `.msi` / `.AppImage` from Releases. Or build from source:
 
 ```bash
-git clone <repo-url> devfoundry && cd devfoundry
+git clone https://github.com/KingLabsA/devfoundry.git devfoundry && cd devfoundry
 cd frontend && npm install && npm run tauri build
 # bundles land in frontend/src-tauri/target/release/bundle/
 ```
