@@ -50,6 +50,7 @@ export function IdeaInput({
           placeholder='Describe your app idea… (⌘↵ to forge)'
           rows={3}
           disabled={disabled}
+          autoFocus
         />
         {running ? (
           <button type="button" className="stop-btn-lg" onClick={onStop}>■ Stop</button>

@@ -91,7 +91,7 @@
       </div>
       <div class="sub">macOS · Windows · Linux · Desktop, CLI &amp; Web · No Docker required · Free deploys</div>
       <div class="shot-frame" style="margin-top:40px">
-        <video src="assets/demo.mp4" autoplay loop muted playsinline poster="assets/og-card.png" style="display:block;width:100%;height:auto"></video>
+        <video src="assets/screen-demo.mp4" autoplay loop muted playsinline poster="assets/og-card.png" style="display:block;width:100%;height:auto"></video>
       </div>
     </div>
 
@@ -152,15 +152,22 @@
     <section id="start">
       <h2>Get started</h2>
       <div class="demo">
-        <pre><span class="comment"># 1. Install — download the .dmg / .msi / .AppImage, or build from source:</span>
-git clone &lt;repo-url&gt; devfoundry &amp;&amp; cd devfoundry/frontend
-npm install &amp;&amp; npm run tauri build
+        <pre><span class="comment"># 1. Install the desktop app — download for macOS / Windows / Linux:</span>
+<span class="comment">#    https://github.com/KingLabsA/devfoundry/releases/latest</span>
 
-<span class="comment"># 2. (Optional) a free local brain:</span>
-ollama pull qwen2.5-coder:14b     <span class="comment"># DevFoundry auto-detects it</span>
+<span class="comment"># …or build from source:</span>
+git clone https://github.com/KingLabsA/devfoundry.git
+cd devfoundry/frontend &amp;&amp; npm install &amp;&amp; npm run tauri build
 
-<span class="comment"># 3. Open the app → pick a skill → type an idea → Forge It.</span>
-<span class="ok">✓ spec → design → codebase → refine → deploy</span></pre>
+<span class="comment"># …or use the CLI + web app (no desktop build needed):</span>
+cd devfoundry/backend &amp;&amp; python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e .
+devfoundry serve        <span class="comment"># web app at http://localhost:9100/app</span>
+
+<span class="comment"># 2. (Optional) a free local brain — auto-detected:</span>
+ollama pull qwen2.5-coder:14b
+
+<span class="comment"># 3. Open the app → pick a Skill → type an idea → Forge It.</span>
+<span class="ok">✓ spec → design → codebase → refine (build + tests) → deploy</span></pre>
       </div>
     </section>
 

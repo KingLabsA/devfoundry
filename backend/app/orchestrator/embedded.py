@@ -109,8 +109,14 @@ def _write_files(project_dir: Path, files: dict[str, str]) -> list[str]:
 
 
 async def _run_cmd(args: list[str], cwd: Path, timeout: int = 300,
-                   env: dict[str, str] | None = None) -> tuple[int, str]:
+                   env: dict[str, str] | None = None,
+                   sandbox_project: Path | None = None) -> tuple[int, str]:
+    """sandbox_project: when set, the command executes GENERATED code — confine its
+    file writes to that project directory (see app/sandbox.py)."""
     proc = None
+    if sandbox_project is not None:
+        from app.sandbox import wrap
+        args = wrap(args, sandbox_project)
     try:
         full_env = {**os.environ, **(env or {})}
         proc = await asyncio.create_subprocess_exec(
@@ -349,12 +355,25 @@ async def build_verify_stage(run_id: str, project_dir: Path) -> dict:
         verdict["runnable"] = False
         return verdict
 
-    # 1. install
+    # 1. install — hallucinated/nonexistent dependency versions are FIXABLE errors:
+    # feed the npm error back to the model (fix package.json) and retry.
     if is_node and not (project_dir / "node_modules").exists():
-        await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
-        code, out = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"], project_dir, timeout=300, env=_CI_ENV)
-        verdict["installed"] = code == 0
-        if code != 0:
+        for attempt in range(3):
+            await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
+            code, out = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"], project_dir,
+                                       timeout=300, env=_CI_ENV, sandbox_project=project_dir)
+            verdict["installed"] = code == 0
+            if code == 0:
+                break
+            await _emit(run_id, Stage.REFINE,
+                        f"Install failed (attempt {attempt + 1}) — fixing dependency versions", kind="log")
+            changed = await _apply_fix(
+                run_id, project_dir,
+                "npm install failed. Fix package.json (use real, existing package versions; "
+                "prefer well-known stable versions; remove packages that don't exist)", out)
+            if not changed:
+                break
+        if not verdict["installed"]:
             await _emit(run_id, Stage.REFINE, "Dependency install failed — verification limited",
                         kind="status", **verdict)
             return verdict
@@ -372,7 +391,8 @@ async def build_verify_stage(run_id: str, project_dir: Path) -> dict:
     if build_cmd:
         for i in range(MAX_BUILD_FIX_ITERATIONS):
             await _emit(run_id, Stage.REFINE, f"Building the app ({' '.join(build_cmd)})...")
-            code, out = await _run_cmd(build_cmd, project_dir, timeout=240, env=_CI_ENV)
+            code, out = await _run_cmd(build_cmd, project_dir, timeout=240, env=_CI_ENV,
+                                       sandbox_project=project_dir)
             verdict["builds"] = code == 0
             verdict["iterations"] = i
             if code == 0:
@@ -435,7 +455,8 @@ async def test_stage(run_id: str, project_dir: Path) -> dict:
         if not (project_dir / "node_modules").exists():
             await _emit(run_id, Stage.REFINE, "Installing dependencies (npm install)...")
             icode, iout = await _run_cmd(["npm", "install", "--no-audit", "--no-fund"],
-                                         project_dir, timeout=300, env=_CI_ENV)
+                                         project_dir, timeout=300, env=_CI_ENV,
+                                         sandbox_project=project_dir)
             if icode != 0:
                 await _emit(run_id, Stage.REFINE, "Dependency install failed — skipping tests",
                             kind="status", passed=0, failed=0, runnable=False)
@@ -448,7 +469,8 @@ async def test_stage(run_id: str, project_dir: Path) -> dict:
         return {"passed": 0, "failed": 0, "runnable": False}
 
     # CI=true makes vitest/jest/etc. run once and exit (no watch-mode hang). 150s cap.
-    code, out = await _run_cmd(runner, project_dir, timeout=150, env=_CI_ENV)
+    code, out = await _run_cmd(runner, project_dir, timeout=150, env=_CI_ENV,
+                               sandbox_project=project_dir)
     low = out.lower()
     if code == -124 or (code != 0 and any(m in low for m in _SETUP_ERROR_MARKERS)):
         reason = "watch-mode/timeout" if code == -124 else "environment not runnable"

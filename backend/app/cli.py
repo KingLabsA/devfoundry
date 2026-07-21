@@ -19,7 +19,7 @@ from pathlib import Path
 import httpx
 
 BASE = "http://localhost:9100"
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 CREDIT = ("DevFoundry v" + VERSION + " — the local-first AI software factory\n"
           "Created by King3Djbl of KingLabs · built with Claude Code · MIT license\n"
           "GitHub  https://github.com/KingLabsA/devfoundry\n"

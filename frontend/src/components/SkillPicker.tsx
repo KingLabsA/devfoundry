@@ -11,7 +11,13 @@ export function SkillPicker({ selected, onChange }: {
   const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
-    fetch(`${BASE}/api/skills`).then((r) => r.json()).then(setSkills).catch(() => {});
+    let alive = true;
+    const load = () => fetch(`${BASE}/api/skills`).then((r) => r.json()).then((s) => {
+      if (alive && Array.isArray(s) && s.length) setSkills(s);
+      else if (alive) setTimeout(load, 3000);   // backend may still be booting — retry
+    }).catch(() => { if (alive) setTimeout(load, 3000); });
+    load();
+    return () => { alive = false; };
   }, []);
 
   if (skills.length === 0) return null;

@@ -59,6 +59,13 @@ async def research_ws(ws: WebSocket) -> None:
             pass
 
 
+# ---------------------------------------------------------------- sandbox
+@router.get("/sandbox/status")
+async def sandbox_status() -> dict:
+    from app.sandbox import status
+    return status()
+
+
 # ---------------------------------------------------------------- embedded services (no Docker)
 @router.get("/embedded/qdrant/status")
 async def qdrant_status() -> dict:

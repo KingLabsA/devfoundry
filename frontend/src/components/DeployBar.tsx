@@ -20,7 +20,13 @@ export function DeployBar({
   const [status, setStatus] = useState("");
 
   useEffect(() => {
-    fetch(`${BASE}/api/deploy/providers`).then((r) => r.json()).then(setProviders).catch(() => {});
+    let alive = true;
+    const load = () => fetch(`${BASE}/api/deploy/providers`).then((r) => r.json()).then((p) => {
+      if (alive && Array.isArray(p) && p.length) setProviders(p);
+      else if (alive) setTimeout(load, 3000);   // backend may still be booting — retry
+    }).catch(() => { if (alive) setTimeout(load, 3000); });
+    load();
+    return () => { alive = false; };
   }, []);
 
   const doRedeploy = async () => {

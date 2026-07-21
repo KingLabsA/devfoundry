@@ -106,12 +106,14 @@ async def _candidates(role: str) -> list[tuple[str, str]]:
         if parsed:
             out.append(parsed)
 
+    # Legacy fallbacks use their OWN default models — LLM_MODEL belongs to the active
+    # provider and is meaningless elsewhere (e.g. FreeLLMAPI's 'auto' on Anthropic).
     if env_value("LLM_BASE_URL") and not any(p == "custom" for p, _ in out):
-        out.append(("custom", env_value("LLM_MODEL") or "gpt-4o-mini"))
-    if env_value("ANTHROPIC_API_KEY"):
-        out.append(("anthropic", env_value("LLM_MODEL") or "claude-sonnet-5"))
-    if env_value("OPENAI_API_KEY"):
-        out.append(("openai", env_value("LLM_MODEL") or "gpt-4o-mini"))
+        out.append(("custom", "gpt-4o-mini"))
+    if env_value("ANTHROPIC_API_KEY").strip():
+        out.append(("anthropic", "claude-sonnet-5"))
+    if env_value("OPENAI_API_KEY").strip():
+        out.append(("openai", "gpt-4o-mini"))
 
     detected = await _autodetect()
     if detected:

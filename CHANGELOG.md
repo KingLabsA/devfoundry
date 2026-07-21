@@ -2,6 +2,30 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.4]
+
+### Added
+- **Sandbox for generated code** — LLM-generated code no longer runs with full user
+  privileges. npm install/build/test and pytest execute under an OS sandbox
+  (macOS `sandbox-exec`, Linux `bwrap`): file WRITES confined to the project directory
+  + toolchain caches; reads/network allowed so builds work. `SANDBOX=0` opts out;
+  `GET /api/sandbox/status` reports the active backend.
+  VERIFIED: outside-project writes blocked, in-project writes + real `npm test` pass inside.
+- **Install-fix loop** — a failed `npm install` (e.g. hallucinated package versions) is now a
+  fixable error: the exact npm error is fed back to the model (fix package.json) and install
+  retried (≤3). VERIFIED on a real failing project: install went red → fixed → green.
+- **Real screen-recorded demo** (`screen-demo.mp4`, 73s): typing the idea, forging, the live
+  pipeline, the finished run, and Build History — now the landing-page hero video.
+
+### Fixed
+- Skills row / Deploy dropdown could vanish forever if their first fetch raced the backend
+  boot — now retried until the backend is up.
+- Legacy provider fallbacks no longer inherit the active provider's model name
+  (e.g. FreeLLMAPI's `auto` sent to Anthropic); each fallback uses its own default.
+- Idea box autofocuses on the Forge page.
+- Website “Get started” had a placeholder `<repo-url>`; now real install paths for all three
+  surfaces (desktop / source / CLI+web).
+
 ## [0.2.3]
 
 ### Added
