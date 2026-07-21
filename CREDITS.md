@@ -1,7 +1,12 @@
 # Credits & Acknowledgments
 
-DevFoundry is created by **jahblesslion** ([KingLabsA](https://github.com/KingLabsA)) and built
-with [Claude Code](https://claude.com/claude-code) (Anthropic). MIT licensed — see [LICENSE](LICENSE).
+DevFoundry is created by **King3Djbl** of **KingLabs** and built with
+[Claude Code](https://claude.com/claude-code) (Anthropic). MIT licensed — see [LICENSE](LICENSE).
+
+**Find the author:**
+[GitHub — KingLabsA](https://github.com/KingLabsA?tab=repositories) ·
+[Hugging Face — King3Djbl](https://huggingface.co/King3Djbl) ·
+[Ollama — FableForge-AI](https://ollama.com/FableForge-AI)
 
 It stands on excellent open source. Thank you to every one of these projects:
 

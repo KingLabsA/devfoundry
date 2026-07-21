@@ -180,9 +180,14 @@ export function SettingsPage() {
           </div>
           {updateMsg && <div className="notice">{updateMsg}</div>}
           <p className="hint">
-            Created by <strong>jahblesslion</strong> (<a href="https://github.com/KingLabsA" target="_blank" rel="noreferrer">KingLabsA</a>)
+            Created by <strong>King3Djbl</strong> of <strong>KingLabs</strong>
             {" "}· built with <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer">Claude Code</a>.
           </p>
+          <div className="about-links">
+            <a className="btn small" href="https://github.com/KingLabsA?tab=repositories" target="_blank" rel="noreferrer">👤 KingLabs on GitHub</a>
+            <a className="btn small" href="https://huggingface.co/King3Djbl" target="_blank" rel="noreferrer">🤗 King3Djbl on HF</a>
+            <a className="btn small" href="https://ollama.com/FableForge-AI" target="_blank" rel="noreferrer">🦙 FableForge-AI on Ollama</a>
+          </div>
           <div className="about-links">
             <a className="btn small" href="https://github.com/KingLabsA/devfoundry" target="_blank" rel="noreferrer">GitHub</a>
             <a className="btn small" href="https://github.com/KingLabsA/devfoundry/releases" target="_blank" rel="noreferrer">Releases</a>

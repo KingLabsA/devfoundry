@@ -95,7 +95,7 @@ Press **⌘K** anywhere for the command palette (navigate + switch theme).
 
 ## Credits
 
-Created by **jahblesslion** ([KingLabsA](https://github.com/KingLabsA)), built with [Claude Code](https://claude.com/claude-code). DevFoundry stands on Tauri, React, FastAPI, Ollama, FreeLLMAPI, MCP, SearXNG, Qdrant, and more — the full list with licenses is in [CREDITS.md](CREDITS.md).
+Created by **King3Djbl** of **KingLabs** — [GitHub](https://github.com/KingLabsA?tab=repositories) · [Hugging Face](https://huggingface.co/King3Djbl) · [Ollama (FableForge-AI)](https://ollama.com/FableForge-AI) — built with [Claude Code](https://claude.com/claude-code). DevFoundry stands on Tauri, React, FastAPI, Ollama, FreeLLMAPI, MCP, SearXNG, Qdrant, and more — the full list with licenses is in [CREDITS.md](CREDITS.md).
 
 ## License
 
