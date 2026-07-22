@@ -2,6 +2,26 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.7]
+
+### Added
+- **FreeLLMAPI gateway is now EMBEDDED — Docker no longer required for it.** 0.2.6 managed
+  the external Docker container; 0.2.7 removes the external dependency entirely (it's a Node
+  app): **⬇ Embed** clones + builds the gateway once into `<workspace>/freellmapi`, and
+  DevFoundry then supervises it as a plain `node` child process on :3002 (API + dashboard in
+  one), auto-starting with the backend — same pattern as the native Qdrant. A legacy Docker
+  container still works as a fallback, and existing Docker-gateway users are migrated
+  automatically: the database and encryption env are copied from the old volume so
+  dashboard-entered provider keys keep working. New `POST /api/embedded/freellmapi/install`;
+  Services page gains gateway + **code sandbox** rows in "Embedded services" (the sandbox was
+  always OS-native — `sandbox-exec`/`bwrap`, no Docker — it's now visible with its status).
+
+### Fixed
+- Website "Get started" CLI snippet called `devfoundry serve` without the venv on PATH —
+  now `.venv/bin/devfoundry serve`, which works on a fresh machine.
+- Website "About Docker" copy updated: Qdrant *and* the gateway run natively; Docker is only
+  for isolated mode + container deploys.
+
 ## [0.2.6]
 
 ### Added

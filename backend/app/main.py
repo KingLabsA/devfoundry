@@ -20,7 +20,7 @@ configure_logging()
 
 app = FastAPI(
     title="DevFoundry",
-    version="0.2.6",
+    version="0.2.7",
     description="The local-first AI software factory — created by King3Djbl of KingLabs.",
 )
 app.add_middleware(

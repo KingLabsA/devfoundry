@@ -103,6 +103,15 @@ async def freellmapi_status() -> dict:
     return await embedded_services.freellmapi_status()
 
 
+@router.post("/embedded/freellmapi/install")
+async def freellmapi_install() -> dict:
+    from app import embedded_services
+    try:
+        return await embedded_services.freellmapi_install()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, str(exc))
+
+
 @router.post("/embedded/freellmapi/start")
 async def freellmapi_start() -> dict:
     from app import embedded_services

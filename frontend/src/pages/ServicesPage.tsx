@@ -80,11 +80,23 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
   const embedded = health?.mode === "embedded" || health?.mode === "mock";
   const [qdrant, setQdrant] = useState<{ installed: boolean; running: boolean } | null>(null);
   const [qBusy, setQBusy] = useState(false);
+  const [gw, setGw] = useState<{ up: boolean; mode: string; native_installed: boolean;
+    installable: boolean; startable: boolean } | null>(null);
+  const [gwBusy, setGwBusy] = useState(false);
+  const [sandbox, setSandbox] = useState<{ enabled: boolean; backend: string | null } | null>(null);
 
   const refreshQdrant = useCallback(async () => {
     try {
       const r = await fetch("http://localhost:9100/api/embedded/qdrant/status");
       if (r.ok) setQdrant(await r.json());
+    } catch { /* backend offline */ }
+    try {
+      const r = await fetch("http://localhost:9100/api/embedded/freellmapi/status");
+      if (r.ok) setGw(await r.json());
+    } catch { /* backend offline */ }
+    try {
+      const r = await fetch("http://localhost:9100/api/sandbox/status");
+      if (r.ok) setSandbox(await r.json());
     } catch { /* backend offline */ }
   }, []);
   useEffect(() => { refreshQdrant(); const id = setInterval(refreshQdrant, 8000); return () => clearInterval(id); }, [refreshQdrant]);
@@ -105,12 +117,31 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
     }
   };
 
+  const gwAction = async (action: "install" | "start" | "stop") => {
+    setGwBusy(true);
+    setMessage(action === "install"
+      ? "Embedding the gateway: clone + npm install + build — a few minutes, one time…"
+      : `Gateway: ${action}…`);
+    try {
+      const r = await fetch(`http://localhost:9100/api/embedded/freellmapi/${action}`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      setMessage(`Gateway ${action} — ok`);
+      await refreshQdrant();
+    } catch (err) {
+      setMessage(`Gateway ${action} failed: ${err}`);
+    } finally {
+      setGwBusy(false);
+    }
+  };
+
   return (
     <div className="page">
       <section className="settings-group">
         <h3>Embedded services — built in, no Docker</h3>
-        <p className="hint">Native binaries managed by DevFoundry. <strong>Qdrant</strong> powers semantic RAG;
-          without it, retrieval falls back to local embeddings automatically.</p>
+        <p className="hint">Native services managed by DevFoundry. <strong>Qdrant</strong> powers semantic RAG
+          (falls back to local embeddings without it); the <strong>FreeLLMAPI gateway</strong> runs as a plain
+          Node child process; the <strong>sandbox</strong> confines generated code using the OS itself.</p>
         <div className="field-row" style={{ alignItems: "center" }}>
           <span className={`dot ${qdrant?.running ? "up" : "down"}`} />
           <span style={{ fontSize: 13 }}>Qdrant vector store
@@ -125,6 +156,30 @@ export function ServicesPage({ health }: { health: HealthReport | null }) {
           {qdrant?.running && (
             <button className="btn small" disabled={qBusy} onClick={() => qdrantAction("stop")}>■ Stop</button>
           )}
+        </div>
+        <div className="field-row" style={{ alignItems: "center" }}>
+          <span className={`dot ${gw?.up ? "up" : "down"}`} />
+          <span style={{ fontSize: 13 }}>FreeLLMAPI gateway
+            {gw ? (gw.up ? ` — running (${gw.mode})` : gw.native_installed ? " — embedded, stopped" : " — not embedded") : " — checking…"}
+          </span>
+          {gw && !gw.native_installed && gw.installable && (
+            <button className="btn small primary" disabled={gwBusy} onClick={() => gwAction("install")}>⬇ Embed (native)</button>
+          )}
+          {gw && !gw.up && gw.startable && (
+            <button className="btn small primary" disabled={gwBusy} onClick={() => gwAction("start")}>▶ Start</button>
+          )}
+          {gw?.up && (
+            <button className="btn small" disabled={gwBusy} onClick={() => gwAction("stop")}>■ Stop</button>
+          )}
+        </div>
+        <div className="field-row" style={{ alignItems: "center" }}>
+          <span className={`dot ${sandbox?.enabled && sandbox.backend ? "up" : "down"}`} />
+          <span style={{ fontSize: 13 }}>Code sandbox
+            {sandbox ? (sandbox.enabled && sandbox.backend
+              ? ` — active (${sandbox.backend}, OS-native): generated code writes confined to the project`
+              : sandbox.enabled ? " — no backend on this OS (code runs unconfined)"
+              : " — disabled via SANDBOX=0") : " — checking…"}
+          </span>
         </div>
       </section>
       {embedded && (

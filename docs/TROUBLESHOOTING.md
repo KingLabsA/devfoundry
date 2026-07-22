@@ -53,8 +53,9 @@
 
 | Symptom | Fix |
 |---|---|
-| Shows "offline" | Click **▶ Start gateway** — it starts the FreeLLMAPI container, launching Docker Desktop first if needed. The banner tells you exactly what's wrong (Docker not installed / not running / container stopped / no install found). The backend also auto-restarts the container at boot whenever Docker is already running. |
-| "no FreeLLMAPI install found" | `git clone https://github.com/tashfeenahmed/freellmapi` into `~/freellmapi` (auto-detected), or set `FREELLMAPI_DIR` to wherever its `docker-compose.yml` lives. |
+| Shows "offline" | Click **▶ Start gateway**. If embedded (default), it starts natively — no Docker. Legacy Docker setups: it starts the container, launching Docker Desktop first if needed. The banner tells you exactly what's wrong, and the backend auto-starts the gateway at boot. |
+| "not embedded yet" | Click **⬇ Embed gateway** (Gateway or Services page) — one-time clone + build into the workspace (needs Node.js ≥ 20, which the pipeline already uses). Existing Docker-gateway data (provider keys) is migrated automatically. |
+| Embedded gateway won't start | See `workspace/freellmapi-native.log`. |
 | Dashboard won't embed | By design — FreeLLMAPI sends `X-Frame-Options: SAMEORIGIN`. Use **Open dashboard in app window** (native child window) or **Open in browser**. |
 | Shows "offline" but container runs | The status is checked by the backend (which can reach it). If it still shows offline, the container isn't on `:3002` — set `FREELLMAPI_URL`. |
 

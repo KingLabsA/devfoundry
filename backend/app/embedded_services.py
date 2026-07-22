@@ -10,6 +10,7 @@ running docker commands by hand.
 """
 import asyncio
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -145,8 +146,107 @@ async def autostart() -> None:
 
 
 # ---------------------------------------------------------------- FreeLLMAPI gateway
+# Preferred: EMBEDDED NATIVE — DevFoundry clones + builds the gateway once into
+# <workspace>/freellmapi and supervises it as a plain `node` child process (it's a
+# Node app serving API + dashboard from one port). Docker is only a fallback for
+# machines that already run the container.
+GATEWAY_REPO = "https://github.com/tashfeenahmed/freellmapi"
+_gw_proc: subprocess.Popen | None = None
+
+
 def _gateway_url() -> str:
     return env_value("FREELLMAPI_URL") or "http://localhost:3002"
+
+
+def _gw_dir() -> Path:
+    return (get_settings().devfoundry_workspace / "freellmapi").resolve()
+
+
+def _gw_data_dir() -> Path:
+    return _gw_dir() / "server" / "data"
+
+
+def gateway_native_installed() -> bool:
+    return ((_gw_dir() / "server" / "dist" / "index.js").exists()
+            and (_gw_dir() / "client" / "dist" / "index.html").exists()
+            and (_gw_dir() / "node_modules").exists())
+
+
+def _migrate_legacy_gateway_data() -> None:
+    """Best-effort continuity: bring the database + encryption env from an older
+    Docker-based install so dashboard-entered provider keys keep working natively."""
+    _gw_data_dir().mkdir(parents=True, exist_ok=True)
+    env_dst = _gw_data_dir() / ".env"
+    legacy_env = Path("~/freellmapi/.env").expanduser()
+    if legacy_env.exists() and not env_dst.exists():
+        # keep ENCRYPTION_KEY etc., drop PORT/HOST lines (we set those per-process)
+        keep = [ln for ln in legacy_env.read_text().splitlines()
+                if not ln.strip().startswith(("PORT", "HOST_BIND", "HOST="))]
+        env_dst.write_text("\n".join(keep) + "\n")
+    if (_gw_data_dir() / "freeapi.db").exists():
+        return
+    docker = shutil.which("docker")
+    if not docker:
+        return
+    try:
+        vols = _run([docker, "volume", "ls", "--format", "{{.Name}}"], 10).stdout.split()
+        vol = next((v for v in vols if "freellmapi" in v.lower()), None)
+        if vol:
+            _run([docker, "run", "--rm", "-v", f"{vol}:/src",
+                  "-v", f"{_gw_data_dir()}:/dst", "alpine", "sh", "-c", "cp -a /src/. /dst/"], 180)
+            log.info("migrated gateway data from docker volume %s", vol)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+
+
+async def freellmapi_install() -> dict:
+    """Embed the gateway: clone + npm install + build into the workspace (one time)."""
+    if gateway_native_installed():
+        _migrate_legacy_gateway_data()
+        return {"installed": True, "path": str(_gw_dir()), "already": True}
+    node, npm, git = shutil.which("node"), shutil.which("npm"), shutil.which("git")
+    if not (node and npm):
+        raise RuntimeError("Node.js >= 20 is required to embed the gateway (it also powers "
+                           "the build pipeline) — install it from nodejs.org and retry.")
+    if not git and not (_gw_dir() / "package.json").exists():
+        raise RuntimeError("git is required to fetch the gateway source")
+    if not (_gw_dir() / "package.json").exists():
+        r = await asyncio.to_thread(_run, [git, "clone", "--depth", "1", GATEWAY_REPO, str(_gw_dir())], 600)
+        if r.returncode != 0:
+            raise RuntimeError(f"git clone failed: {r.stderr[-300:]}")
+    r = await asyncio.to_thread(_run, [npm, "install", "--no-audit", "--no-fund"], 1200, str(_gw_dir()))
+    if r.returncode != 0:
+        raise RuntimeError(f"npm install failed: {(r.stderr or r.stdout)[-300:]}")
+    r = await asyncio.to_thread(_run, [npm, "run", "build"], 1200, str(_gw_dir()))
+    if r.returncode != 0:
+        raise RuntimeError(f"gateway build failed: {(r.stderr or r.stdout)[-300:]}")
+    _migrate_legacy_gateway_data()
+    return {"installed": True, "path": str(_gw_dir())}
+
+
+def _gw_native_env() -> dict:
+    env = dict(os.environ)
+    env["PORT"] = "3002"
+    env["HOST"] = "127.0.0.1"
+    env_file = _gw_data_dir() / ".env"
+    if env_file.exists():
+        env["FREEAPI_ENV_PATH"] = str(env_file)
+        if "ENCRYPTION_KEY" in env_file.read_text():
+            env["NODE_ENV"] = "production"
+    return env  # non-production mode auto-generates a local key next to the db
+
+
+async def _gw_native_start() -> None:
+    global _gw_proc
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("node not found on PATH")
+    _gw_data_dir().mkdir(parents=True, exist_ok=True)
+    logf = open(get_settings().devfoundry_workspace / "freellmapi-native.log", "w")
+    _gw_proc = subprocess.Popen(
+        [node, str(_gw_dir() / "server" / "dist" / "index.js")],
+        cwd=str(_gw_dir() / "server"), env=_gw_native_env(),
+        stdout=logf, stderr=subprocess.STDOUT)
 
 
 def _run(args: list[str], timeout: int = 10, cwd: str | None = None) -> subprocess.CompletedProcess:
@@ -208,30 +308,50 @@ async def freellmapi_status() -> dict:
     """Rich gateway state so the UI can offer exactly the right action."""
     url = _gateway_url()
     up = await _url_up(url)
+    native = gateway_native_installed()
+    managed_native = _gw_proc is not None and _gw_proc.poll() is None
     docker_cli = shutil.which("docker") is not None
     daemon = await _daemon_up() if docker_cli else False
     name = state = None
     if daemon:
         name, state = await asyncio.to_thread(_gateway_container)
     comp = _compose_dir()
-    startable = docker_cli and (daemon or _daemon_launchable()) and bool(name or comp)
-    return {"up": up, "url": url, "docker_cli": docker_cli, "docker_daemon": daemon,
+    mode = ("native" if managed_native
+            else "docker" if up and state == "running"
+            else "external" if up else "none")
+    startable = native or (docker_cli and (daemon or _daemon_launchable()) and bool(name or comp))
+    installable = not native and shutil.which("node") is not None
+    return {"up": up, "url": url, "mode": mode,
+            "native_installed": native, "managed_native": managed_native,
+            "docker_cli": docker_cli, "docker_daemon": daemon,
             "container": name, "container_state": state,
-            "compose_dir": str(comp) if comp else None, "startable": startable}
+            "compose_dir": str(comp) if comp else None,
+            "startable": startable, "installable": installable}
 
 
 async def freellmapi_start() -> dict:
-    """One-click gateway start: launch Docker if needed (macOS), then the container."""
+    """One-click gateway start. Embedded-native first (plain node child process, no
+    Docker); falls back to the Docker container/compose for legacy setups —
+    launching Docker Desktop itself if that's what it takes."""
     url = _gateway_url()
     if await _url_up(url):
         return {"up": True, "url": url, "already": True}
+    if gateway_native_installed():
+        await _gw_native_start()
+        for _ in range(30):
+            await asyncio.sleep(1)
+            if await _url_up(url):
+                return {"up": True, "url": url, "mode": "native", "pid": _gw_proc.pid}
+        raise RuntimeError("embedded gateway started but the port did not answer within 30s "
+                           "— see workspace/freellmapi-native.log")
     docker = shutil.which("docker")
     if not docker:
-        raise RuntimeError("docker CLI not found — FreeLLMAPI runs as a Docker service. "
-                           "Install Docker Desktop, or point FREELLMAPI_URL at a remote gateway.")
+        raise RuntimeError("gateway not embedded yet — click Install (needs Node.js >= 20), "
+                           "or point FREELLMAPI_URL at a remote gateway.")
     if not await _daemon_up():
         if not _daemon_launchable():
-            raise RuntimeError("Docker daemon is not running — start Docker, then retry.")
+            raise RuntimeError("Docker daemon is not running — start Docker, then retry "
+                               "(or Install the embedded gateway to drop Docker entirely).")
         log.info("launching Docker Desktop for the gateway")
         await asyncio.to_thread(_run, ["open", "-a", "Docker"], 15)
         for _ in range(45):
@@ -248,20 +368,24 @@ async def freellmapi_start() -> dict:
     else:
         comp = _compose_dir()
         if not comp:
-            raise RuntimeError("no FreeLLMAPI install found — git clone "
-                               "https://github.com/tashfeenahmed/freellmapi && docker compose up -d "
-                               "(or set FREELLMAPI_DIR to where its docker-compose.yml lives)")
+            raise RuntimeError("no FreeLLMAPI install found — click Install to embed the "
+                               "gateway natively (or set FREELLMAPI_DIR for a compose setup)")
         r = await asyncio.to_thread(_run, [docker, "compose", "up", "-d"], 300, str(comp))
         if r.returncode != 0:
             raise RuntimeError(f"docker compose up failed: {r.stderr[-300:]}")
     for _ in range(30):
         await asyncio.sleep(1)
         if await _url_up(url):
-            return {"up": True, "url": url, "container": name}
+            return {"up": True, "url": url, "mode": "docker", "container": name}
     raise RuntimeError("gateway container started but the port did not answer within 30s")
 
 
 async def freellmapi_stop() -> dict:
+    global _gw_proc
+    if _gw_proc is not None and _gw_proc.poll() is None:
+        _gw_proc.terminate()
+        _gw_proc = None
+        return {"up": False, "stopped": "native"}
     docker = shutil.which("docker")
     if not docker or not await _daemon_up():
         return {"up": False, "already": True}
@@ -273,11 +397,16 @@ async def freellmapi_stop() -> dict:
 
 
 async def gateway_autostart() -> None:
-    """On backend startup: if Docker is already running and the freellmapi container
-    exists but is stopped, start it. Never launches Docker Desktop itself — that
-    heavier path stays behind the explicit Start button on the Gateway page."""
+    """On backend startup: bring the gateway up with zero clicks. Embedded-native
+    starts unconditionally (it's ours); the Docker fallback only starts the
+    container when the daemon is already running — launching Docker Desktop
+    itself stays behind the explicit Start button."""
     try:
         if await _url_up(_gateway_url()):
+            return
+        if gateway_native_installed():
+            await _gw_native_start()
+            log.info("embedded freellmapi gateway autostarted (native, pid %s)", _gw_proc.pid)
             return
         docker = shutil.which("docker")
         if not docker or not await _daemon_up():
@@ -285,6 +414,6 @@ async def gateway_autostart() -> None:
         name, state = await asyncio.to_thread(_gateway_container)
         if name and state != "running":
             await asyncio.to_thread(_run, [docker, "start", name], 60)
-            log.info("freellmapi gateway autostarted (%s)", name)
+            log.info("freellmapi gateway autostarted (docker, %s)", name)
     except Exception:  # noqa: BLE001 — the provider chain falls back gracefully without it
         log.exception("freellmapi gateway autostart failed")
