@@ -20,11 +20,11 @@
     "longDescription": "DevFoundry designs, codes, tests, and deploys applications on your own machine, with your own models. Created by King3Djbl of KingLabs, built with Claude Code. MIT licensed.",
     "homepage": "https://github.com/KingLabsA/devfoundry",
     "icon": [
-      "src-tauri/icons/32x32.png",
-      "src-tauri/icons/128x128.png",
-      "src-tauri/icons/128x128@2x.png",
-      "src-tauri/icons/icon.icns",
-      "src-tauri/icons/icon.ico"
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ]
   },
   "plugins": {
