@@ -41,6 +41,16 @@ jobs:
       - name: Install frontend deps
         run: cd frontend && npm ci
 
+      - name: Verify icons exist (Windows debug)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          dir "frontend\src-tauri\icons\" | findstr ".ico"
+          if not exist "frontend\src-tauri\icons\icon.ico" (
+            echo Icon file not found!
+            exit /b 1
+          )
+        shell: cmd
+
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
