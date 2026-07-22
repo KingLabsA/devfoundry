@@ -14,17 +14,17 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "publisher": "KingLabs",
-    "copyright": "\u00a9 2026 King3Djbl (KingLabs) \u2014 MIT license",
+    "copyright": "© 2026 King3Djbl (KingLabs) — MIT license",
     "category": "DeveloperTool",
     "shortDescription": "The local-first AI software factory",
     "longDescription": "DevFoundry designs, codes, tests, and deploys applications on your own machine, with your own models. Created by King3Djbl of KingLabs, built with Claude Code. MIT licensed.",
     "homepage": "https://github.com/KingLabsA/devfoundry",
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "src-tauri/icons/32x32.png",
+      "src-tauri/icons/128x128.png",
+      "src-tauri/icons/128x128@2x.png",
+      "src-tauri/icons/icon.icns",
+      "src-tauri/icons/icon.ico"
     ]
   },
   "plugins": {
@@ -38,7 +38,7 @@
   "app": {
     "windows": [
       {
-        "title": "DevFoundry \u2014 Autonomous Software Factory",
+        "title": "DevFoundry — Autonomous Software Factory",
         "width": 1440,
         "height": 900,
         "minWidth": 1100,
