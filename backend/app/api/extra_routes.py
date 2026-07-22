@@ -97,6 +97,27 @@ async def qdrant_stop() -> dict:
     return embedded_services.stop()
 
 
+@router.get("/embedded/freellmapi/status")
+async def freellmapi_status() -> dict:
+    from app import embedded_services
+    return await embedded_services.freellmapi_status()
+
+
+@router.post("/embedded/freellmapi/start")
+async def freellmapi_start() -> dict:
+    from app import embedded_services
+    try:
+        return await embedded_services.freellmapi_start()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, str(exc))
+
+
+@router.post("/embedded/freellmapi/stop")
+async def freellmapi_stop() -> dict:
+    from app import embedded_services
+    return await embedded_services.freellmapi_stop()
+
+
 # ---------------------------------------------------------------- presets
 class Preset(BaseModel):
     name: str

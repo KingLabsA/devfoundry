@@ -20,7 +20,7 @@ configure_logging()
 
 app = FastAPI(
     title="DevFoundry",
-    version="0.2.5",
+    version="0.2.6",
     description="The local-first AI software factory — created by King3Djbl of KingLabs.",
 )
 app.add_middleware(
@@ -52,8 +52,10 @@ if _dist.is_dir():
 async def _load_history() -> None:
     from app.orchestrator.pipeline import orchestrator
     orchestrator.load_history()
-    # Native embedded services (no Docker): start Qdrant if installed.
+    # Native embedded services (no Docker): start Qdrant if installed, and bring the
+    # FreeLLMAPI gateway container back up when Docker is already running.
     import asyncio
 
     from app import embedded_services
     asyncio.get_event_loop().create_task(embedded_services.autostart())
+    asyncio.get_event_loop().create_task(embedded_services.gateway_autostart())

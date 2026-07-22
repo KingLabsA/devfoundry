@@ -3,10 +3,15 @@
 Qdrant ships official single-binary releases; DevFoundry downloads the right one
 for this OS/arch once (into <workspace>/bin), then runs and supervises it as a
 child process. This replaces the Docker container for vector-store RAG.
+
+The FreeLLMAPI gateway is a Docker service; DevFoundry manages its lifecycle
+(status / start / stop / autostart) so the app never depends on the user
+running docker commands by hand.
 """
 import asyncio
 import logging
 import platform
+import shutil
 import subprocess
 import tarfile
 import zipfile
@@ -14,7 +19,7 @@ from pathlib import Path
 
 import httpx
 
-from app.config import get_settings
+from app.config import env_value, get_settings
 
 log = logging.getLogger(__name__)
 
@@ -137,3 +142,149 @@ async def autostart() -> None:
             log.info("embedded qdrant autostarted")
     except Exception:  # noqa: BLE001 — RAG falls back gracefully without it
         log.exception("embedded qdrant autostart failed")
+
+
+# ---------------------------------------------------------------- FreeLLMAPI gateway
+def _gateway_url() -> str:
+    return env_value("FREELLMAPI_URL") or "http://localhost:3002"
+
+
+def _run(args: list[str], timeout: int = 10, cwd: str | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(args, capture_output=True, text=True, timeout=timeout, cwd=cwd)
+
+
+async def _url_up(url: str) -> bool:
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            return (await client.get(url)).status_code < 500
+    except httpx.HTTPError:
+        return False
+
+
+async def _daemon_up() -> bool:
+    docker = shutil.which("docker")
+    if not docker:
+        return False
+    try:
+        r = await asyncio.to_thread(_run, [docker, "info", "--format", "{{.ServerVersion}}"], 6)
+        return r.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+
+
+def _gateway_container() -> tuple[str | None, str | None]:
+    """(name, state) of a freellmapi container — running or stopped — if one exists."""
+    docker = shutil.which("docker")
+    if not docker:
+        return None, None
+    try:
+        out = _run([docker, "ps", "-a", "--format", "{{.Names}}\t{{.State}}"], 10)
+    except subprocess.TimeoutExpired:
+        return None, None
+    for line in out.stdout.splitlines():
+        name, _, state = line.partition("\t")
+        if "freellmapi" in name.lower():
+            return name, state.strip()
+    return None, None
+
+
+def _compose_dir() -> Path | None:
+    """Where the FreeLLMAPI compose project lives (FREELLMAPI_DIR overrides)."""
+    candidates = [env_value("FREELLMAPI_DIR"), "~/freellmapi", "~/Documents/freellmapi"]
+    for cand in candidates:
+        if not cand:
+            continue
+        p = Path(cand).expanduser()
+        if any((p / f).exists() for f in ("docker-compose.yml", "docker-compose.yaml", "compose.yaml")):
+            return p
+    return None
+
+
+def _daemon_launchable() -> bool:
+    return platform.system() == "Darwin" and Path("/Applications/Docker.app").exists()
+
+
+async def freellmapi_status() -> dict:
+    """Rich gateway state so the UI can offer exactly the right action."""
+    url = _gateway_url()
+    up = await _url_up(url)
+    docker_cli = shutil.which("docker") is not None
+    daemon = await _daemon_up() if docker_cli else False
+    name = state = None
+    if daemon:
+        name, state = await asyncio.to_thread(_gateway_container)
+    comp = _compose_dir()
+    startable = docker_cli and (daemon or _daemon_launchable()) and bool(name or comp)
+    return {"up": up, "url": url, "docker_cli": docker_cli, "docker_daemon": daemon,
+            "container": name, "container_state": state,
+            "compose_dir": str(comp) if comp else None, "startable": startable}
+
+
+async def freellmapi_start() -> dict:
+    """One-click gateway start: launch Docker if needed (macOS), then the container."""
+    url = _gateway_url()
+    if await _url_up(url):
+        return {"up": True, "url": url, "already": True}
+    docker = shutil.which("docker")
+    if not docker:
+        raise RuntimeError("docker CLI not found — FreeLLMAPI runs as a Docker service. "
+                           "Install Docker Desktop, or point FREELLMAPI_URL at a remote gateway.")
+    if not await _daemon_up():
+        if not _daemon_launchable():
+            raise RuntimeError("Docker daemon is not running — start Docker, then retry.")
+        log.info("launching Docker Desktop for the gateway")
+        await asyncio.to_thread(_run, ["open", "-a", "Docker"], 15)
+        for _ in range(45):
+            await asyncio.sleep(2)
+            if await _daemon_up():
+                break
+        else:
+            raise RuntimeError("Docker daemon did not come up within 90s")
+    name, _state = await asyncio.to_thread(_gateway_container)
+    if name:
+        r = await asyncio.to_thread(_run, [docker, "start", name], 60)
+        if r.returncode != 0:
+            raise RuntimeError(f"docker start {name} failed: {r.stderr[-300:]}")
+    else:
+        comp = _compose_dir()
+        if not comp:
+            raise RuntimeError("no FreeLLMAPI install found — git clone "
+                               "https://github.com/tashfeenahmed/freellmapi && docker compose up -d "
+                               "(or set FREELLMAPI_DIR to where its docker-compose.yml lives)")
+        r = await asyncio.to_thread(_run, [docker, "compose", "up", "-d"], 300, str(comp))
+        if r.returncode != 0:
+            raise RuntimeError(f"docker compose up failed: {r.stderr[-300:]}")
+    for _ in range(30):
+        await asyncio.sleep(1)
+        if await _url_up(url):
+            return {"up": True, "url": url, "container": name}
+    raise RuntimeError("gateway container started but the port did not answer within 30s")
+
+
+async def freellmapi_stop() -> dict:
+    docker = shutil.which("docker")
+    if not docker or not await _daemon_up():
+        return {"up": False, "already": True}
+    name, state = await asyncio.to_thread(_gateway_container)
+    if name and state == "running":
+        await asyncio.to_thread(_run, [docker, "stop", name], 60)
+        return {"up": False, "stopped": name}
+    return {"up": False, "already": True}
+
+
+async def gateway_autostart() -> None:
+    """On backend startup: if Docker is already running and the freellmapi container
+    exists but is stopped, start it. Never launches Docker Desktop itself — that
+    heavier path stays behind the explicit Start button on the Gateway page."""
+    try:
+        if await _url_up(_gateway_url()):
+            return
+        docker = shutil.which("docker")
+        if not docker or not await _daemon_up():
+            return
+        name, state = await asyncio.to_thread(_gateway_container)
+        if name and state != "running":
+            await asyncio.to_thread(_run, [docker, "start", name], 60)
+            log.info("freellmapi gateway autostarted (%s)", name)
+    except Exception:  # noqa: BLE001 — the provider chain falls back gracefully without it
+        log.exception("freellmapi gateway autostart failed")

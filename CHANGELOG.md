@@ -2,6 +2,20 @@
 
 All notable changes to DevFoundry. Format loosely follows Keep a Changelog.
 
+## [0.2.6]
+
+### Added
+- **Managed FreeLLMAPI gateway — no more terminal.** The gateway is a Docker service, and
+  until now the app only *consumed* it: if the container (or Docker itself) was stopped, the
+  Gateway page just said "offline" and left you to fix it by hand. Now the app owns the
+  lifecycle: `GET/POST /api/embedded/freellmapi/{status,start,stop}` detect the container or
+  compose project (`FREELLMAPI_DIR` overrides; `~/freellmapi` auto-detected), a **▶ Start
+  gateway** button on the Gateway page handles the full path — launching Docker Desktop if
+  needed, then the container, then waiting for the port — and the backend **auto-restarts the
+  gateway container at boot** whenever Docker is already running. The offline banner now says
+  exactly what's wrong (no Docker CLI / daemon stopped / container stopped / no install found)
+  instead of a generic message.
+
 ## [0.2.5]
 
 ### Fixed
