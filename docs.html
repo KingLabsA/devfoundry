@@ -118,9 +118,11 @@ devfoundry version               # version & credits</code></pre>
 
     <h2 id="docker">6. About Docker — optional, never required</h2>
     <div class="callout"><strong>DevFoundry does not need Docker.</strong> The default <em>embedded mode</em> runs the whole
-      pipeline inside the app. Docker is an optional "isolated mode" for two extras: containerized deploy builds, and the
-      bundled SearXNG/Qdrant services. If Docker isn't installed, those features degrade gracefully (zip deploys,
-      Wikipedia-backed research, local RAG) and everything else works identically.</div>
+      pipeline inside the app, and the companion services run as <em>native</em> processes DevFoundry manages itself:
+      the Qdrant vector store (one-click native binary) and the FreeLLMAPI gateway (built once into the workspace, then
+      supervised as a plain Node process — Services → "Embed"). The code sandbox is OS-native too
+      (<code>sandbox-exec</code>/<code>bwrap</code>). Docker remains an optional "isolated mode" for containerized
+      engines and container deploy builds; without it everything degrades gracefully and works identically.</div>
 
     <h2 id="trouble">7. Troubleshooting (quick)</h2>
     <table>

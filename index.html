@@ -161,7 +161,7 @@ cd devfoundry/frontend &amp;&amp; npm install &amp;&amp; npm run tauri build
 
 <span class="comment"># …or use the CLI + web app (no desktop build needed):</span>
 cd devfoundry/backend &amp;&amp; python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e .
-devfoundry serve        <span class="comment"># web app at http://localhost:9100/app</span>
+.venv/bin/devfoundry serve   <span class="comment"># web app at http://localhost:9100/app</span>
 
 <span class="comment"># 2. (Optional) a free local brain — auto-detected:</span>
 ollama pull qwen2.5-coder:14b
